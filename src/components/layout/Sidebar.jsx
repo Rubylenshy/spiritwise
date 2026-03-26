@@ -49,10 +49,23 @@ const NAV = [
   },
 ]
 
+const IMPORT_NAV = {
+  label: 'Import',
+  to: '/import',
+  icon: (
+    <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={1.8}>
+      <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+}
+
 export default function Sidebar() {
   const logout = useAuthStore((s) => s.logout)
   const user = useAuthStore((s) => s.user)
   const navigate = useNavigate()
+
+  const isStaff = user?.is_staff || user?.is_superuser
+  const navItems = isStaff ? [...NAV, IMPORT_NAV] : NAV
 
   const handleLogout = () => {
     logout()
@@ -71,7 +84,7 @@ export default function Sidebar() {
 
       {/* Nav links */}
       <nav className="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
-        {NAV.map(({ label, to, icon }) => (
+        {navItems.map(({ label, to, icon }) => (
           <NavLink
             key={to}
             to={to}

@@ -136,3 +136,16 @@ export function useSubmitAnswer() {
     },
   })
 }
+
+// ─── Badges ───────────────────────────────────────────────────────────────────
+
+export function useBadges() {
+  return useQuery({
+    queryKey: ['badges'],
+    queryFn: async () => {
+      const { data } = await api.get('/auth/badges/')
+      return data
+    },
+    staleTime: 1000 * 60 * 5,
+  })
+}

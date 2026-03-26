@@ -1,6 +1,7 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Navbar from './Navbar'
+import { useAuthSync } from '../../hooks/useAuthSync'
 
 const PAGE_TITLES = {
   '/': 'Good morning',
@@ -8,9 +9,11 @@ const PAGE_TITLES = {
   '/series': 'Series',
   '/leaderboard': 'Leaderboard',
   '/profile': 'Your Profile',
+  '/import': 'Import Sermons',
 }
 
 export default function RootLayout() {
+  useAuthSync()
   const { pathname } = useLocation()
 
   // Match dynamic routes like /sermons/:id

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import useAuthStore from '../store/authStore'
 import { useEngagementStats, useSermons } from '../hooks/useSermons'
 import { PageLoader, ErrorState, TagPill } from '../components/ui'
+import { useState, useEffect, useRef } from 'react'
 
 function StreakCard({ streak }) {
   const filled = Math.min(streak % 7 || (streak > 0 ? 7 : 0), 7)
@@ -109,11 +110,33 @@ export default function HomePage() {
   const { data: stats, isLoading: statsLoading, error: statsError, refetch: refetchStats } = useEngagementStats()
   const { data: sermonsData, isLoading: sermonsLoading } = useSermons({ page_size: 4 })
 
+  const [badgeToast, setBadgeToast] = useState(null)
+  const seenBadges = useRef(new Set())
+
+  useEffect(() => {
+    if (!stats?.recent_badges?.length) return
+    const newest = stats.recent_badges[0]
+    if (newest && !seenBadges.current.has(newest.name)) {
+      seenBadges.current.add(newest.name)
+      setBadgeToast(newest)
+      setTimeout(() => setBadgeToast(null), 4000)
+    }
+  }, [stats?.recent_badges])
+
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
   return (
     <div className="max-w-3xl mx-auto space-y-8 animate-slide-up">
+      {badgeToast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-spirit-800 border border-gold-500/40 text-spirit-100 px-5 py-4 rounded-2xl shadow-lg animate-slide-up">
+          <span className="text-3xl leading-none">{badgeToast.icon}</span>
+          <div>
+            <p className="text-gold-400 font-medium text-sm">Badge unlocked!</p>
+            <p className="text-spirit-200 text-sm">{badgeToast.name}</p>
+          </div>
+        </div>
+      )}
       <div>
         <h2 className="font-display text-4xl text-spirit-100 italic">{greeting}, {firstName}</h2>
         <p className="text-spirit-400 text-sm mt-1">Here's your spiritual journey today.</p>

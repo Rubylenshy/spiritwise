@@ -12,6 +12,7 @@ import SermonPlayerPage from './pages/SermonPlayerPage'
 import { SeriesListPage, SeriesDetailPage } from './pages/SeriesPages'
 import LeaderboardPage from './pages/LeaderboardPage'
 import UserProfilePage from './pages/UserProfilePage'
+import CloudImportPage from './pages/CloudImportPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,6 +47,7 @@ export default function App() {
             <Route path="series/:id" element={<SeriesDetailPage />} />
             <Route path="leaderboard" element={<LeaderboardPage />} />
             <Route path="profile" element={<UserProfilePage />} />
+            <Route path="import" element={<CloudImportPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

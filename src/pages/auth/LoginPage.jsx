@@ -18,31 +18,28 @@ export default function LoginPage() {
     setError('')
   }
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault()
     if (!form.username || !form.password) {
-        setError('Please fill in all fields.')
-        return
+      setError('Please fill in all fields.')
+      return
     }
-
     setLoading(true)
-
     try {
-        const { data } = await api.post('/auth/login/', form)
-
-        setAuth({
+      const { data } = await api.post('/auth/login/', form)
+      setAuth({
         user: data.user,
         accessToken: data.access,
         refreshToken: data.refresh,
-        })
-
-        if (data?.user) navigate(from, { replace: true })
+      })
+      navigate(from, { replace: true })
     } catch (err) {
-        const msg = err.response?.data?.detail ?? 'Invalid credentials. Please try again.'
-        setError(msg)
+      const msg = err.response?.data?.detail ?? 'Invalid credentials. Please try again.'
+      setError(msg)
     } finally {
-        setLoading(false)
+      setLoading(false)
     }
-    }
+  }
 
   return (
     <div className="min-h-screen bg-spirit-900 flex">
@@ -92,7 +89,7 @@ export default function LoginPage() {
             <p className="text-spirit-400 text-sm mt-1">Sign in to continue your journey</p>
           </div>
 
-          <form className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <label className="label" htmlFor="username">Username</label>
               <input
@@ -128,8 +125,7 @@ export default function LoginPage() {
             )}
 
             <button
-              type="button"
-              onClick={handleSubmit}
+              type="submit"
               disabled={loading}
               className="btn-primary w-full mt-2 flex items-center justify-center gap-2"
             >

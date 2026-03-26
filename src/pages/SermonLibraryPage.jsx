@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useSermons, useTags } from '../hooks/useSermons'
+import { useDebounce } from '../hooks/useDebounce'
 import { PageLoader, ErrorState, EmptyState, TagPill } from '../components/ui'
 
 function SermonRow({ sermon }) {
@@ -68,11 +69,12 @@ export default function SermonLibraryPage() {
   const [page, setPage] = useState(1)
 
   const PAGE_SIZE = 10
+  const debouncedQuery = useDebounce(query, 400)
 
   const { data: tagsData } = useTags()
 
   const { data, isLoading, error, refetch } = useSermons({
-    q: query || undefined,
+    q: debouncedQuery || undefined,
     tag: activeTag || undefined,
     page,
     page_size: PAGE_SIZE,
