@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import useAuthStore from '../store/authStore'
 import { useEngagementStats, useSermons } from '../hooks/useSermons'
-import { PageLoader, ErrorState, TagPill } from '../components/ui'
+import { PageLoader, ErrorState, TagPill, XPToast } from '../components/ui'
 import { useState, useEffect, useRef } from 'react'
 
 function StreakCard({ streak }) {
@@ -127,7 +127,7 @@ export default function HomePage() {
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8 animate-slide-up">
+    <div className="max-w-3xl mx-auto space-y-6 sm:space-y-8 animate-slide-up">
       {badgeToast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-spirit-800 border border-gold-500/40 text-spirit-100 px-5 py-4 rounded-2xl shadow-lg animate-slide-up">
           <span className="text-3xl leading-none">{badgeToast.icon}</span>
@@ -148,7 +148,7 @@ export default function HomePage() {
         <ErrorState message="Could not load your stats." onRetry={refetchStats} />
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <StreakCard streak={stats?.current_streak ?? 0} />
             <DailyGoalCard
               minutesToday={stats?.minutes_today ?? 0}

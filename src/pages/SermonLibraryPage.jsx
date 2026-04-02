@@ -95,7 +95,7 @@ export default function SermonLibraryPage() {
   const count = data?.count ?? 0
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 animate-slide-up">
+    <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6 animate-slide-up">
       {/* Search */}
       <div className="relative">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}

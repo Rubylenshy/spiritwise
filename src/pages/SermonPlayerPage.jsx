@@ -105,12 +105,8 @@ export default function SermonPlayerPage() {
   const [showQuestions, setShowQuestions] = useState(false)
   const [xpToast, setXpToast] = useState(false)
 
-  // Resume from saved progress
+  // Show questions if already completed
   useEffect(() => {
-    if (sermon?.user_progress?.progress_seconds && audioRef.current) {
-      audioRef.current.currentTime = sermon.user_progress.progress_seconds
-      setCurrentTime(sermon.user_progress.progress_seconds)
-    }
     if (sermon?.user_progress?.completed) {
       setShowQuestions(true)
     }
@@ -128,13 +124,14 @@ export default function SermonPlayerPage() {
 
   useEffect(() => {
     if (playing) {
-      progressTimerRef.current = setInterval(() => syncProgress(false), 10000)
+        progressTimerRef.current = setInterval(() => syncProgress(false), 15000)
     } else {
-      clearInterval(progressTimerRef.current)
-      if (audioRef.current && currentTime > 0) syncProgress(false)
+        clearInterval(progressTimerRef.current)
+        // Only sync on pause if we actually played something meaningful (> 3 seconds)
+        if (audioRef.current && currentTime > 3) syncProgress(false)
     }
     return () => clearInterval(progressTimerRef.current)
-  }, [playing, syncProgress])
+    }, [playing, syncProgress])
 
   const duration = sermon?.duration_seconds ?? 0
   const progress = duration > 0 ? currentTime / duration : 0
@@ -174,7 +171,7 @@ export default function SermonPlayerPage() {
   if (error) return <ErrorState message="Could not load this sermon." onRetry={refetch} />
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 animate-slide-up">
+    <div className="max-w-2xl mx-auto space-y-6 animate-slide-up w-full">
       <XPToast xp={50} show={xpToast} />
 
       {/* Breadcrumb */}
@@ -193,7 +190,7 @@ export default function SermonPlayerPage() {
       </div>
 
       {/* Player card */}
-      <div className="card p-8 space-y-6">
+      <div className="card p-4 sm:p-8 space-y-6">
         {/* Artwork */}
         <div className="w-24 h-24 rounded-2xl bg-spirit-700 border border-spirit-600 flex items-center justify-center mx-auto overflow-hidden">
           {sermon.thumbnail
@@ -220,10 +217,18 @@ export default function SermonPlayerPage() {
           <audio
             ref={audioRef}
             src={sermon.audio_signed_url}
+            crossOrigin="anonymous"
+            preload="metadata"
             onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime ?? 0)}
             onEnded={() => { setPlaying(false); syncProgress(true) }}
             onPlay={() => setPlaying(true)}
             onPause={() => setPlaying(false)}
+            onLoadedMetadata={() => {
+              if (audioRef.current && sermon.user_progress?.progress_seconds > 0) {
+                audioRef.current.currentTime = sermon.user_progress.progress_seconds
+              }
+            }}
+            onError={(e) => console.error('Audio error:', e.target.error)}
           />
         )}
 

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import useAuthStore from '../store/authStore'
 import api from '../lib/axios'
-import { Spinner } from '../components/ui'
+import { Spinner, PageLoader } from '../components/ui'
 import { useBadges, useEngagementStats } from '../hooks/useSermons'
 
 // ── Badge shelf ───────────────────────────────────────────────────────────────
@@ -31,7 +31,7 @@ function BadgeShelf({ badges, recentBadges }) {
           </button>
         )}
       </div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {displayed.map((ub) => {
           const isNew = recentBadges?.some(r => r.name === ub.badge.name)
           return (
@@ -142,7 +142,7 @@ function SettingsForm({ user, onSaved }) {
   }
 
   return (
-    <div className="card p-6">
+    <div className="card p-4 sm:p-6">
       <p className="label mb-5">Settings</p>
       <form onSubmit={handleSave} className="space-y-5">
         <div className="grid grid-cols-2 gap-3">
@@ -206,6 +206,26 @@ function SettingsForm({ user, onSaved }) {
 
 export default function UserProfilePage() {
   const user = useAuthStore((s) => s.user)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setAvatarUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('avatar', file)
+      const { data } = await api.post('/auth/avatar/', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      setUser(data)
+    } catch {
+      // silently fail — user stays unchanged
+    } finally {
+      setAvatarUploading(false)
+    }
+  }
+
   const { data: badges, isLoading: badgesLoading } = useBadges()
   const { data: stats } = useEngagementStats()
 
@@ -215,22 +235,42 @@ export default function UserProfilePage() {
     : user?.username
 
   return (
-    <div className="max-w-xl mx-auto space-y-6 animate-slide-up">
+    <div className="max-w-xl mx-auto space-y-4 sm:space-y-6 animate-slide-up">
 
       {/* Avatar + name */}
       <div className="card p-6 flex items-center gap-5">
-        <div className="w-16 h-16 rounded-full bg-spirit-600 border-2 border-spirit-500 flex items-center justify-center shrink-0">
-          <span className="font-display text-2xl text-gold-400">{initials}</span>
+        <div className="relative shrink-0">
+          <div className="w-16 h-16 rounded-full bg-spirit-600 border-2 border-spirit-500 flex items-center justify-center overflow-hidden">
+            {user?.avatar
+              ? <img src={user.avatar} alt="avatar" className="w-full h-full object-cover" />
+              : <span className="font-display text-2xl text-gold-400">{initials}</span>
+            }
+          </div>
+          <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-gold-500 flex items-center justify-center cursor-pointer hover:bg-gold-400 transition-colors">
+            <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarChange} />
+            <svg viewBox="0 0 24 24" fill="none" className="w-3 h-3 text-spirit-900" stroke="currentColor" strokeWidth={2.5}>
+              <path d="M12 4v16m8-8H4" strokeLinecap="round"/>
+            </svg>
+          </label>
+          {avatarUploading && (
+            <div className="absolute inset-0 rounded-full bg-spirit-900/60 flex items-center justify-center">
+              <svg className="w-5 h-5 animate-spin text-gold-400" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"/>
+              </svg>
+            </div>
+          )}
         </div>
         <div className="min-w-0">
           <p className="font-display text-xl text-spirit-100 italic">{displayName}</p>
           <p className="text-spirit-400 text-sm">{user?.email}</p>
           <p className="text-spirit-500 text-xs mt-0.5">@{user?.username}</p>
+          <p className="text-spirit-600 text-xs mt-1">Tap the + to change photo</p>
         </div>
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {[
           { label: 'XP earned',       value: (user?.xp_points ?? 0).toLocaleString() },
           { label: 'Best streak',     value: `${user?.longest_streak ?? 0}d` },
