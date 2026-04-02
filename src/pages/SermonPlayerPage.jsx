@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useSermon, useUpdateProgress, useSubmitAnswer } from '../hooks/useSermons'
+import { useSermon, useSubmitAnswer } from '../hooks/useSermons'
+import { useAudio } from '../context/AudioContext'
 import { PageLoader, ErrorState, Spinner, XPToast } from '../components/ui'
 
 function formatTime(seconds) {
+  if (!seconds || isNaN(seconds)) return '0:00'
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
   return `${m}:${s.toString().padStart(2, '0')}`
@@ -35,7 +37,6 @@ function ReflectionQuestion({ question, sermonId, index }) {
         <span className="font-display text-gold-500 text-lg leading-none shrink-0 mt-0.5">{index + 1}.</span>
         <p className="text-spirit-300 text-sm leading-relaxed">{question.text}</p>
       </div>
-
       {!submitted ? (
         <div className="ml-6 space-y-2">
           <textarea
@@ -60,17 +61,18 @@ function ReflectionQuestion({ question, sermonId, index }) {
           <p className="text-gold-500 text-xs mt-2">✦ Saved</p>
         </div>
       )}
-
       <XPToast xp={10} show={xpToast} />
     </div>
   )
 }
 
-
 function NextSermonCard({ nextSermon }) {
+  const { loadSermon } = useAudio()
+  const { data: next } = useSermon(nextSermon?.id)
+
   if (!nextSermon) return null
   return (
-    <div className="card p-5 flex items-center gap-4 border-spirit-600 animate-slide-up">
+    <div className="card p-5 flex items-center gap-4 animate-slide-up">
       <div className="w-10 h-10 rounded-xl bg-spirit-700 border border-spirit-600 flex items-center justify-center shrink-0 overflow-hidden">
         {nextSermon.thumbnail
           ? <img src={nextSermon.thumbnail} alt="" className="w-full h-full object-cover" />
@@ -82,10 +84,7 @@ function NextSermonCard({ nextSermon }) {
         <p className="text-spirit-100 font-medium text-sm truncate">{nextSermon.title}</p>
         <p className="text-spirit-400 text-xs">{nextSermon.speaker} · {nextSermon.duration_display}</p>
       </div>
-      <Link
-        to={`/sermons/${nextSermon.id}`}
-        className="btn-primary text-sm shrink-0"
-      >
+      <Link to={`/sermons/${nextSermon.id}`} className="btn-primary text-sm shrink-0">
         Play →
       </Link>
     </div>
@@ -95,80 +94,65 @@ function NextSermonCard({ nextSermon }) {
 export default function SermonPlayerPage() {
   const { id } = useParams()
   const { data: sermon, isLoading, error, refetch } = useSermon(id)
-  const updateProgress = useUpdateProgress()
 
-  const audioRef = useRef(null)
-  const progressTimerRef = useRef(null)
-  const [playing, setPlaying] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
-  const [volume, setVolume] = useState(1)
+  const {
+    currentSermon,
+    playing,
+    currentTime,
+    duration,
+    progress,
+    loading: audioLoading,
+    loadSermon,
+    togglePlay,
+    seek,
+    skip,
+    volume,
+    changeVolume,
+  } = useAudio()
+
   const [showQuestions, setShowQuestions] = useState(false)
   const [xpToast, setXpToast] = useState(false)
 
-  // Show questions if already completed
+  const isThisSermon = currentSermon?.id === sermon?.id
+  const effectiveDuration = isThisSermon ? duration : (sermon?.duration_seconds ?? 0)
+  const effectiveTime = isThisSermon ? currentTime : (sermon?.user_progress?.progress_seconds ?? 0)
+  const effectiveProgress = effectiveDuration > 0 ? effectiveTime / effectiveDuration : 0
+
+  // Load sermon into global player when page opens
   useEffect(() => {
-    if (sermon?.user_progress?.completed) {
-      setShowQuestions(true)
+    if (!sermon?.audio_signed_url) return
+    const resumeAt = sermon.user_progress?.progress_seconds ?? 0
+
+    // Only auto-load if not already playing this sermon
+    if (currentSermon?.id !== sermon.id) {
+      loadSermon(sermon, resumeAt)
     }
-  }, [sermon?.id])
+  }, [sermon?.id, sermon?.audio_signed_url])
 
-  // Auto-sync progress every 10 seconds while playing
-  const syncProgress = useCallback((completed = false) => {
-    if (!audioRef.current || !id) return
-    updateProgress.mutate({
-      sermonId: id,
-      progressSeconds: Math.floor(audioRef.current.currentTime),
-      completed,
-    })
-  }, [id])
-
+  // Show questions when 80% complete
   useEffect(() => {
-    if (playing) {
-        progressTimerRef.current = setInterval(() => syncProgress(false), 15000)
-    } else {
-        clearInterval(progressTimerRef.current)
-        // Only sync on pause if we actually played something meaningful (> 3 seconds)
-        if (audioRef.current && currentTime > 3) syncProgress(false)
-    }
-    return () => clearInterval(progressTimerRef.current)
-    }, [playing, syncProgress])
-
-  const duration = sermon?.duration_seconds ?? 0
-  const progress = duration > 0 ? currentTime / duration : 0
-
-  // Show questions + award XP at 80%
-  useEffect(() => {
-    if (progress >= 0.8 && !showQuestions && sermon) {
+    if (effectiveProgress >= 0.8 && !showQuestions && sermon) {
       setShowQuestions(true)
-      syncProgress(true)
       if (!sermon.user_progress?.completed) {
         setXpToast(true)
         setTimeout(() => setXpToast(false), 3000)
       }
     }
-  }, [progress, showQuestions, sermon])
+  }, [effectiveProgress, showQuestions, sermon])
 
-  const togglePlay = () => {
-    if (!audioRef.current) return
-    if (playing) { audioRef.current.pause() }
-    else { audioRef.current.play() }
-    setPlaying(!playing)
-  }
-
-  const seek = (e) => {
-    if (!audioRef.current) return
-    const rect = e.currentTarget.getBoundingClientRect()
-    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-    audioRef.current.currentTime = ratio * duration
-  }
-
-  const skip = (secs) => {
-    if (!audioRef.current) return
-    audioRef.current.currentTime = Math.min(Math.max(0, audioRef.current.currentTime + secs), duration)
-  }
+  // Show questions if already completed
+  useEffect(() => {
+    if (sermon?.user_progress?.completed) setShowQuestions(true)
+  }, [sermon?.id])
 
   if (isLoading) return <PageLoader />
   if (error) return <ErrorState message="Could not load this sermon." onRetry={refetch} />
+
+  const handleSeekClick = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+    seek(ratio * effectiveDuration)
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-slide-up w-full">
@@ -186,7 +170,7 @@ export default function SermonPlayerPage() {
             <span>›</span>
           </>
         )}
-        <span className="text-spirit-400 truncate max-w-[200px]">{sermon.title}</span>
+        <span className="text-spirit-400 truncate max-w-[180px]">{sermon.title}</span>
       </div>
 
       {/* Player card */}
@@ -212,51 +196,34 @@ export default function SermonPlayerPage() {
           )}
         </div>
 
-        {/* Audio element */}
-        {sermon.audio_signed_url && (
-          <audio
-            ref={audioRef}
-            src={sermon.audio_signed_url}
-            crossOrigin="anonymous"
-            preload="metadata"
-            onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime ?? 0)}
-            onEnded={() => { setPlaying(false); syncProgress(true) }}
-            onPlay={() => setPlaying(true)}
-            onPause={() => setPlaying(false)}
-            onLoadedMetadata={() => {
-              if (audioRef.current && sermon.user_progress?.progress_seconds > 0) {
-                audioRef.current.currentTime = sermon.user_progress.progress_seconds
-              }
-            }}
-            onError={(e) => console.error('Audio error:', e.target.error)}
-          />
-        )}
-
         {!sermon.audio_signed_url && (
           <div className="bg-spirit-800 border border-spirit-700 rounded-xl px-4 py-3 text-center">
-            <p className="text-spirit-400 text-sm">Audio not available yet — upload via Django admin.</p>
+            <p className="text-spirit-400 text-sm">Audio not available yet.</p>
           </div>
         )}
 
         {/* Progress bar */}
         <div className="space-y-1.5">
-          <div className="h-1.5 bg-spirit-700 rounded-full cursor-pointer group relative" onClick={seek}>
+          <div
+            className="h-1.5 bg-spirit-700 rounded-full cursor-pointer group relative"
+            onClick={handleSeekClick}
+          >
             <div
               className="h-full bg-gold-500 rounded-full transition-all duration-100 relative"
-              style={{ width: `${progress * 100}%` }}
+              style={{ width: `${effectiveProgress * 100}%` }}
             >
               <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-gold-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </div>
           <div className="flex justify-between text-xs font-mono text-spirit-500">
-            <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
+            <span>{formatTime(effectiveTime)}</span>
+            <span>{formatTime(effectiveDuration)}</span>
           </div>
         </div>
 
         {/* Controls */}
         <div className="flex items-center justify-center gap-6">
-          <button onClick={() => skip(-15)} className="text-spirit-400 hover:text-spirit-200 transition-colors group">
+          <button onClick={() => skip(-15)} className="text-spirit-400 hover:text-spirit-200 transition-colors">
             <svg viewBox="0 0 36 36" className="w-8 h-8" fill="none">
               <path d="M18 6 A12 12 0 0 0 6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
               <polyline points="6,12 6,18 12,18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
@@ -265,11 +232,22 @@ export default function SermonPlayerPage() {
           </button>
 
           <button
-            onClick={togglePlay}
-            disabled={!sermon.audio_signed_url}
+            onClick={() => {
+              if (!isThisSermon && sermon?.audio_signed_url) {
+                loadSermon(sermon, sermon.user_progress?.progress_seconds ?? 0)
+              } else {
+                togglePlay()
+              }
+            }}
+            disabled={!sermon.audio_signed_url || audioLoading}
             className="w-14 h-14 rounded-full bg-gold-500 hover:bg-gold-400 flex items-center justify-center transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-gold-500/20"
           >
-            {playing ? (
+            {audioLoading && isThisSermon ? (
+              <svg className="w-6 h-6 animate-spin text-spirit-900" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"/>
+              </svg>
+            ) : playing && isThisSermon ? (
               <svg viewBox="0 0 24 24" className="w-6 h-6 text-spirit-900" fill="currentColor">
                 <rect x="6" y="4" width="4" height="16" rx="1" />
                 <rect x="14" y="4" width="4" height="16" rx="1" />
@@ -299,11 +277,7 @@ export default function SermonPlayerPage() {
           </svg>
           <input
             type="range" min={0} max={1} step={0.05} value={volume}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value)
-              setVolume(v)
-              if (audioRef.current) audioRef.current.volume = v
-            }}
+            onChange={(e) => changeVolume(parseFloat(e.target.value))}
             className="flex-1 accent-gold-500 h-1 cursor-pointer"
           />
         </div>
@@ -320,7 +294,11 @@ export default function SermonPlayerPage() {
       {/* Tags */}
       {sermon.tags?.length > 0 && (
         <div className="flex gap-2 flex-wrap">
-          {sermon.tags.map((tag) => <span key={tag.id} className="text-xs px-3 py-1.5 rounded-full border border-spirit-600 text-spirit-400">{tag.name}</span>)}
+          {sermon.tags.map((tag) => (
+            <span key={tag.id} className="text-xs px-3 py-1.5 rounded-full border border-spirit-600 text-spirit-400">
+              {tag.name}
+            </span>
+          ))}
         </div>
       )}
 
@@ -334,7 +312,7 @@ export default function SermonPlayerPage() {
         <div className="card p-6 border-l-2 border-l-gold-500 rounded-r-2xl rounded-l-none animate-slide-up space-y-5">
           <div>
             <p className="label mb-1">Reflection questions</p>
-            <p className="text-spirit-500 text-xs">Engage deeper · each answer earns +10 XP</p>
+            <p className="text-spirit-500 text-xs">Each answer earns +10 XP</p>
           </div>
           <div className="space-y-6 divide-y divide-spirit-700">
             {sermon.questions.map((q, i) => (

@@ -35,8 +35,8 @@ export function useSermon(id) {
     },
     enabled: !!id,
     staleTime: 0,              // always fresh — token embedded in audio URL
-    gcTime: 1000 * 60 * 5,    // keep in cache 5 min
-    refetchOnMount: 'always',  // refetch every time player page opens
+    gcTime: 1000 * 60 * 5,
+    refetchOnMount: 'always',  // get fresh token every time player page opens
   })
 }
 
@@ -86,8 +86,8 @@ export function useUpdateProgress() {
       })
       return data
     },
-    onSuccess: (data, variables) => {
-      // NEVER invalidate sermon detail — it would reset the audio src and stop playback
+    onSuccess: (data) => {
+      // NEVER invalidate sermon detail — new src resets the audio and stops playback
       // Only refresh engagement stats when XP is actually awarded (sermon completed)
       if (data.xp_awarded > 0) {
         queryClient.invalidateQueries({ queryKey: KEYS.stats() })
@@ -105,7 +105,7 @@ export function useEngagementStats() {
       const { data } = await api.get('/engagement/stats/')
       return data
     },
-    staleTime: 1000 * 30, // refresh every 30s — streak + XP change frequently
+    staleTime: 1000 * 30,
   })
 }
 
