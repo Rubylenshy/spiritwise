@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 
 const TABS = [
   {
-    to: '/',
+    to: '/home',        // ← was '/', now /home
     label: 'Home',
     icon: (active) => (
       <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}>
@@ -56,7 +56,7 @@ export default function BottomNav() {
           <NavLink
             key={to}
             to={to}
-            end={to === '/'}
+            end={to === '/home'}
             className={({ isActive }) =>
               `flex-1 flex flex-col items-center gap-1 py-2.5 text-xs transition-colors ${
                 isActive ? 'text-gold-400' : 'text-spirit-500'

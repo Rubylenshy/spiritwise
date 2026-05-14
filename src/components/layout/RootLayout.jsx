@@ -7,12 +7,13 @@ import FloatingPlayer from './FloatingPlayer'
 import { useAuthSync } from '../../hooks/useAuthSync'
 
 const PAGE_TITLES = {
-  '/': 'Good morning',
+  '/home': 'Good morning',
   '/sermons': 'Sermon Library',
   '/series': 'Series',
   '/leaderboard': 'Leaderboard',
   '/profile': 'Your Profile',
   '/import': 'Import Sermons',
+  '/wordlookup': 'WordLookUp',
 }
 
 export default function RootLayout() {

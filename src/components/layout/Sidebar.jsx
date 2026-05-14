@@ -4,7 +4,7 @@ import useAuthStore from '../../store/authStore'
 const NAV = [
   {
     label: 'Home',
-    to: '/',
+    to: '/home',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={1.8}>
         <path d="M3 12L12 3l9 9M5 10v9a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1v-9" strokeLinecap="round" strokeLinejoin="round" />
@@ -76,10 +76,10 @@ export default function Sidebar({ onClose }) {
     <aside className="w-64 h-full min-h-screen flex flex-col bg-spirit-900 border-r border-spirit-800">
       {/* Logo */}
       <div className="px-6 py-6 border-b border-spirit-800 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
+        <NavLink to="/" className="flex items-center gap-2.5">
           <span className="text-2xl font-display text-gold-400 italic">✦</span>
           <span className="font-display text-xl text-spirit-100 tracking-wide">SpiritWise</span>
-        </div>
+        </NavLink>
         {onClose && (
           <button onClick={onClose} className="lg:hidden text-spirit-500 hover:text-spirit-200 transition-colors p-1">
             <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={1.8}>
@@ -95,7 +95,7 @@ export default function Sidebar({ onClose }) {
           <NavLink
             key={to}
             to={to}
-            end={to === '/'}
+            end={to === '/home'}
             onClick={onClose}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group

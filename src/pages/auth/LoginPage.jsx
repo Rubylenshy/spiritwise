@@ -11,7 +11,10 @@ export default function LoginPage() {
   const setAuth = useAuthStore((s) => s.setAuth)
   const navigate = useNavigate()
   const location = useLocation()
-  const from = location.state?.from?.pathname ?? '/'
+
+  // If user was redirected here from a protected route, send them back there.
+  // Otherwise send to /home (the authenticated dashboard), not / (the landing page).
+  const from = location.state?.from?.pathname ?? '/home'
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
@@ -45,14 +48,14 @@ export default function LoginPage() {
     <div className="min-h-screen bg-spirit-900 flex">
       {/* Left panel — branding */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 bg-radial-spirit border-r border-spirit-800">
-        <div className="flex items-center gap-2.5">
+        <Link to="/" className="flex items-center gap-2.5">
           <span className="text-3xl font-display text-gold-400 italic">✦</span>
           <span className="font-display text-2xl text-spirit-100 tracking-wide">SpiritWise</span>
-        </div>
+        </Link>
 
         <div className="space-y-6">
           <blockquote className="font-display text-4xl text-spirit-100 italic leading-snug">
-            "Your word is a lamp to my feet and a light to my path."
+            ``Your word is a lamp to my feet and a light to my path.``
           </blockquote>
           <p className="text-spirit-400 text-sm font-sans">— Psalm 119:105</p>
         </div>
@@ -147,6 +150,12 @@ export default function LoginPage() {
             Don't have an account?{' '}
             <Link to="/signup" className="text-gold-400 hover:text-gold-300 transition-colors">
               Create one
+            </Link>
+          </p>
+
+          <p className="text-center text-sm">
+            <Link to="/" className="text-spirit-600 hover:text-spirit-400 transition-colors text-xs">
+              ← Back to home
             </Link>
           </p>
         </div>

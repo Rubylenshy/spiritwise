@@ -5,8 +5,14 @@ import { AudioProvider } from './context/AudioContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import RootLayout from './components/layout/RootLayout'
 
+// Auth
 import LoginPage from './pages/auth/LoginPage'
 import SignUpPage from './pages/auth/SignUpPage'
+
+// Public landing page (own layout — no sidebar, no player)
+import LandingPage from './pages/landing/LandingPage'
+
+// Authenticated app pages
 import HomePage from './pages/HomePage'
 import SermonLibraryPage from './pages/SermonLibraryPage'
 import SermonPlayerPage from './pages/SermonPlayerPage'
@@ -31,9 +37,21 @@ export default function App() {
       <AudioProvider>
         <BrowserRouter>
           <Routes>
+            <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignUpPage />} />
+            <Route
+              path="/home"
+              element={
+                <ProtectedRoute>
+                  <RootLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<HomePage />} />
+            </Route>
 
+            {/* All other authenticated routes also live inside RootLayout */}
             <Route
               path="/"
               element={
@@ -42,7 +60,6 @@ export default function App() {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<HomePage />} />
               <Route path="sermons" element={<SermonLibraryPage />} />
               <Route path="sermons/:id" element={<SermonPlayerPage />} />
               <Route path="series" element={<SeriesListPage />} />
@@ -50,8 +67,12 @@ export default function App() {
               <Route path="leaderboard" element={<LeaderboardPage />} />
               <Route path="profile" element={<UserProfilePage />} />
               <Route path="import" element={<CloudImportPage />} />
+
+              {/* WordLookUp shell — built in LP4, feature in WL1–WL4 */}
+              {/* <Route path="wordlookup" element={<WordLookUpPage />} /> */}
             </Route>
 
+            {/* Catch-all: unauthenticated → landing, authenticated → dashboard */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
