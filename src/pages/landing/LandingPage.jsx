@@ -1,40 +1,66 @@
 import { useRef } from 'react'
+
+// LP1 — already built
 import LandingNav from './components/LandingNav'
 import HeroSection from './components/HeroSection'
 
+// LP2 — features + WordLookUp spotlight + app mockup + pricing
+import FeaturesSection from './components/FeaturesSection'
+import WordLookUpSpotlight from './components/WordLookUpSpotlight'
+import AppMockupSection from './components/AppMockupSection'
+import PricingSection from './components/PricingSection'
+
+// LP3 — leaders + getting started + footer
+import LeadersSection from './components/LeadersSection'
+import GettingStartedSection from './components/GettingStartedSection'
+import LandingFooter from './components/LandingFooter'
+
 /**
  * LandingPage — public, no RootLayout.
- * Has its own full-width layout: no sidebar, no bottom nav, no floating player.
- * Sections will be added progressively through LP2–LP3.
+ * No sidebar, no bottom nav, no floating player.
+ *
+ * Sections:
+ *   LP1: Navbar + Hero
+ *   LP2: Features · WordLookUp spotlight · App mockup · Pricing
+ *   LP3: Leaders · Getting Started · Footer
+ *   LP4: /wordlookup route shell (separate page)
  */
 export default function LandingPage() {
-  // Ref for smooth-scroll from hero "Watch demo" CTA
+  // Ref for smooth-scroll from hero "Watch demo" CTA → features section
   const featuresRef = useRef(null)
 
   return (
     <div className="min-h-screen bg-spirit-900 text-spirit-100">
+      {/* ── LP1: Navbar ─────────────────────────────────────── */}
       <LandingNav />
 
-      {/* ── Hero (LP1) ─────────────────────────────────────── */}
+      {/* ── LP1: Hero ───────────────────────────────────────── */}
       <HeroSection featuresRef={featuresRef} />
 
-      {/* ── Features section stub (LP2) ──────────────────────
-          Will be replaced in LP2 with full features + WordLookUp spotlight */}
-      <section
-        id="features"
-        ref={featuresRef}
-        className="max-w-7xl mx-auto px-6 lg:px-8 py-24 text-center"
-      >
-        <p className="font-display text-3xl text-spirit-400 italic">
-          Features section coming in LP2 ✦
-        </p>
-      </section>
+      {/* ── LP2: Features grid ──────────────────────────────── */}
+      <FeaturesSection featuresRef={featuresRef} />
 
-      {/* ── Leaders stub (LP3) ───────────────────────────────── */}
-      <section id="leaders" className="py-8" />
+      {/* ── LP2: WordLookUp product spotlight ───────────────── */}
+      <WordLookUpSpotlight />
 
-      {/* ── Pricing stub (LP3) ───────────────────────────────── */}
-      <section id="pricing" className="py-8" />
+      {/* ── LP2: App mockup / demo visual ───────────────────── */}
+      <AppMockupSection />
+
+      {/* ── LP3: World gospel leaders ───────────────────────── */}
+      <LeadersSection />
+
+      {/* ── LP2: Pricing ────────────────────────────────────── */}
+      {/*
+        Pricing sits after leaders so the value is clear before
+        the ask — the leader library justifies even the free tier.
+      */}
+      <PricingSection />
+
+      {/* ── LP3: Getting started ────────────────────────────── */}
+      <GettingStartedSection />
+
+      {/* ── LP3: Footer ─────────────────────────────────────── */}
+      <LandingFooter />
     </div>
   )
 }
