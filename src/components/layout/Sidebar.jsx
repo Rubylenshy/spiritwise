@@ -49,6 +49,22 @@ const NAV = [
   },
 ]
 
+// Tools section — shown for all users
+const TOOLS_NAV = [
+  {
+    label: 'WordLookUp',
+    to: '/wordlookup',
+    badge: 'beta',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={1.8}>
+        <circle cx="11" cy="11" r="8" />
+        <path d="M21 21l-4.35-4.35" strokeLinecap="round" />
+        <path d="M11 8v6M8 11h6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+]
+
 const IMPORT_NAV = {
   label: 'Import',
   to: '/import',
@@ -59,13 +75,37 @@ const IMPORT_NAV = {
   ),
 }
 
+function NavItem({ item, onClose }) {
+  return (
+    <NavLink
+      to={item.to}
+      end={item.to === '/home'}
+      onClick={onClose}
+      className={({ isActive }) =>
+        `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group
+        ${isActive
+          ? 'bg-spirit-700 text-gold-400 border border-spirit-600'
+          : 'text-spirit-400 hover:text-spirit-200 hover:bg-spirit-800'
+        }`
+      }
+    >
+      {item.icon}
+      <span className="flex-1">{item.label}</span>
+      {item.badge && (
+        <span className="text-xs px-1.5 py-0.5 rounded-full bg-gold-500/10 border border-gold-500/25 text-gold-500 font-medium leading-none">
+          {item.badge}
+        </span>
+      )}
+    </NavLink>
+  )
+}
+
 export default function Sidebar({ onClose }) {
   const logout = useAuthStore((s) => s.logout)
   const user = useAuthStore((s) => s.user)
   const navigate = useNavigate()
 
   const isStaff = user?.is_staff || user?.is_superuser
-  const navItems = isStaff ? [...NAV, IMPORT_NAV] : NAV
 
   const handleLogout = () => {
     logout()
@@ -90,25 +130,38 @@ export default function Sidebar({ onClose }) {
       </div>
 
       {/* Nav links */}
-      <nav className="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
-        {navItems.map(({ label, to, icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/home'}
-            onClick={onClose}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group
-              ${isActive
-                ? 'bg-spirit-700 text-gold-400 border border-spirit-600'
-                : 'text-spirit-400 hover:text-spirit-200 hover:bg-spirit-800'
-              }`
-            }
-          >
-            {icon}
-            {label}
-          </NavLink>
+      <nav className="flex-1 px-3 py-5 overflow-y-auto space-y-1">
+        {/* Main navigation */}
+        {NAV.map((item) => (
+          <NavItem key={item.to} item={item} onClose={onClose} />
         ))}
+
+        {/* ── Tools section ────────────────────────────────────── */}
+        <div className="pt-4 pb-1">
+          <div className="flex items-center gap-2 px-3">
+            <div className="flex-1 h-px bg-spirit-800" />
+            <span className="text-spirit-600 text-xs uppercase tracking-[0.15em] shrink-0">Tools</span>
+            <div className="flex-1 h-px bg-spirit-800" />
+          </div>
+        </div>
+
+        {TOOLS_NAV.map((item) => (
+          <NavItem key={item.to} item={item} onClose={onClose} />
+        ))}
+
+        {/* Admin-only import */}
+        {isStaff && (
+          <>
+            <div className="pt-4 pb-1">
+              <div className="flex items-center gap-2 px-3">
+                <div className="flex-1 h-px bg-spirit-800" />
+                <span className="text-spirit-600 text-xs uppercase tracking-[0.15em] shrink-0">Admin</span>
+                <div className="flex-1 h-px bg-spirit-800" />
+              </div>
+            </div>
+            <NavItem item={IMPORT_NAV} onClose={onClose} />
+          </>
+        )}
       </nav>
 
       {/* User + logout */}

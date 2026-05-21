@@ -21,6 +21,10 @@ import LeaderboardPage from './pages/LeaderboardPage'
 import UserProfilePage from './pages/UserProfilePage'
 import CloudImportPage from './pages/CloudImportPage'
 
+// LP4 — WordLookUp shell (mic + BibleVerseCard layout, non-functional)
+// Feature logic (useMicrophone, Bible API, AI resolver) added in WL1–WL4
+import WordLookUpPage from './pages/WordLookUpPage'
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -51,7 +55,7 @@ export default function App() {
               <Route index element={<HomePage />} />
             </Route>
 
-            {/* All other authenticated routes also live inside RootLayout */}
+            {/* All other authenticated routes live inside RootLayout */}
             <Route
               path="/"
               element={
@@ -68,8 +72,8 @@ export default function App() {
               <Route path="profile" element={<UserProfilePage />} />
               <Route path="import" element={<CloudImportPage />} />
 
-              {/* WordLookUp shell — built in LP4, feature in WL1–WL4 */}
-              {/* <Route path="wordlookup" element={<WordLookUpPage />} /> */}
+              {/* LP4: WordLookUp shell — route + visual layout ready for WL1 */}
+              <Route path="wordlookup" element={<WordLookUpPage />} />
             </Route>
 
             {/* Catch-all: unauthenticated → landing, authenticated → dashboard */}
