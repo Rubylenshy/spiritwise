@@ -1,20 +1,16 @@
 /**
- * WordLookUpPage — WL1
+ * WordLookUpPage — WL2
  *
- * Fully wired:
- *   ✓ useMicrophone hook (Web Speech API, continuous mode)
- *   ✓ Live transcription display (final text + italic interim)
- *   ✓ Bible reference extractor (bibleParser.js)
- *   ✓ Gold highlighting of detected references in transcript
- *   ✓ Clicking a highlight triggers a lookup (queues ref → result panel)
- *   ✓ Frequency visualiser via Web Audio API AnalyserNode
- *   ✓ File upload fallback for unsupported browsers → POST /api/wordlookup/transcribe/
- *
- * WL2 stub: lookup endpoint not yet live — detected references shown with
- * "Pending API connection" placeholder. BibleVerseCard still exported for reuse.
+ * Changes from WL1:
+ *   ✓ handleRefClick now calls POST /api/wordlookup/lookup/ for real verse text
+ *   ✓ Version switcher on BibleVerseCard fires another lookup for the same ref
+ *   ✓ Recent lookups panel pulls GET /api/wordlookup/history/
+ *   ✓ Loading and error states on cards
+ *   ✓ FileFallback still posts to POST /api/wordlookup/transcribe/ (unchanged)
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useMicrophone } from '../hooks/useMicrophone'
 import { extractReferences, highlightTranscript } from '../lib/bibleParser'
 import api from '../lib/axios'
@@ -33,9 +29,13 @@ export function BibleVerseCard({
   onVersionChange,
   placeholder = false,
   loading = false,
+  error = null,
 }) {
   const [version, setVersion] = useState(initialVersion)
   const [copied, setCopied] = useState(false)
+
+  // Sync if the parent passes a new initialVersion (e.g. after version switch)
+  useEffect(() => { setVersion(initialVersion) }, [initialVersion])
 
   const handleVersionChange = (v) => {
     setVersion(v)
@@ -64,6 +64,15 @@ export function BibleVerseCard({
           <div className="h-3 bg-spirit-700 rounded w-4/6" />
         </div>
         <div className="h-3 bg-spirit-800 rounded w-24" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="card p-5 border-flame-500/25">
+        <p className="text-flame-400 text-sm font-medium">{reference}</p>
+        <p className="text-spirit-500 text-xs mt-1">{error}</p>
       </div>
     )
   }
@@ -108,7 +117,7 @@ export function BibleVerseCard({
       <blockquote className="font-display text-lg text-spirit-200 italic leading-relaxed border-l-2 border-l-gold-500/60 pl-4">
         {verseText || (
           <span className="text-spirit-500 not-italic text-sm font-sans">
-            Bible API connection coming in WL2 — reference detected: <strong className="text-gold-400">{reference}</strong>
+            No text returned
           </span>
         )}
       </blockquote>
@@ -186,7 +195,6 @@ function MicButton({ state, onClick }) {
 }
 
 // ── FrequencyVisualiser ───────────────────────────────────────────────────────
-// Reads live data from the Web Audio AnalyserNode every animation frame.
 
 function FrequencyVisualiser({ analyserNode, active }) {
   const canvasRef = useRef(null)
@@ -198,7 +206,6 @@ function FrequencyVisualiser({ analyserNode, active }) {
     if (!canvas) return
 
     if (!active || !analyserNode) {
-      // Draw flat idle bars
       const ctx = canvas.getContext('2d')
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       const barW = canvas.width / BAR_COUNT
@@ -216,25 +223,18 @@ function FrequencyVisualiser({ analyserNode, active }) {
     const draw = () => {
       rafRef.current = requestAnimationFrame(draw)
       analyserNode.getByteFrequencyData(dataArray)
-
       const ctx = canvas.getContext('2d')
       const { width, height } = canvas
       ctx.clearRect(0, 0, width, height)
-
       const barW = width / BAR_COUNT
       const gap = 2
-
       for (let i = 0; i < BAR_COUNT; i++) {
-        // Sample from the lower half of the spectrum (voice range)
         const dataIdx = Math.floor((i / BAR_COUNT) * (bufferLength * 0.5))
         const value = dataArray[dataIdx] / 255
         const barH = Math.max(3, value * height)
-
-        // Gradient: gold at peak, muted at base
         const gradient = ctx.createLinearGradient(0, height - barH, 0, height)
         gradient.addColorStop(0, `rgba(201, 168, 76, ${0.4 + value * 0.6})`)
         gradient.addColorStop(1, `rgba(201, 168, 76, 0.2)`)
-
         ctx.fillStyle = gradient
         const x = i * barW + gap / 2
         ctx.beginPath()
@@ -248,13 +248,8 @@ function FrequencyVisualiser({ analyserNode, active }) {
   }, [analyserNode, active])
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={200}
-      height={40}
-      className="opacity-80"
-      style={{ imageRendering: 'pixelated' }}
-    />
+    <canvas ref={canvasRef} width={200} height={40} className="opacity-80"
+            style={{ imageRendering: 'pixelated' }} />
   )
 }
 
@@ -283,16 +278,13 @@ function HighlightedTranscript({ transcript, interimTranscript, refs, onRefClick
             <span className="text-spirit-600 text-xs font-mono">{wordCount} words</span>
           )}
           {!isEmpty && (
-            <button
-              onClick={onClear}
-              className="text-xs text-spirit-500 hover:text-spirit-300 transition-colors px-2 py-0.5 rounded-lg hover:bg-spirit-700"
-            >
+            <button onClick={onClear}
+              className="text-xs text-spirit-500 hover:text-spirit-300 transition-colors px-2 py-0.5 rounded-lg hover:bg-spirit-700">
               Clear
             </button>
           )}
         </div>
       </div>
-
       <div className="min-h-36 max-h-60 overflow-y-auto p-4 text-sm leading-relaxed font-sans">
         {isEmpty ? (
           <p className="text-spirit-600 italic">
@@ -303,12 +295,9 @@ function HighlightedTranscript({ transcript, interimTranscript, refs, onRefClick
           <p>
             {segments.map((seg, i) =>
               seg.highlighted ? (
-                <button
-                  key={i}
-                  onClick={() => onRefClick(seg.ref)}
+                <button key={i} onClick={() => onRefClick(seg.ref)}
                   className="text-gold-400 bg-gold-500/15 border border-gold-500/30 px-1.5 py-0.5 rounded font-medium hover:bg-gold-500/25 transition-colors cursor-pointer mx-0.5"
-                  title={`Look up: ${seg.ref.query}`}
-                >
+                  title={`Look up: ${seg.ref.query}`}>
                   {seg.text}
                 </button>
               ) : (
@@ -325,10 +314,50 @@ function HighlightedTranscript({ transcript, interimTranscript, refs, onRefClick
   )
 }
 
+// ── ResultCard (version-switchable) ──────────────────────────────────────────
+
+function ResultCard({ initial }) {
+  const [result, setResult] = useState(initial)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  const handleVersionChange = async (newVersion) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { data } = await api.post('/wordlookup/lookup/', {
+        reference: initial.reference,
+        versions: [newVersion],
+      })
+      if (data.results?.length) {
+        setResult(data.results[0])
+      }
+    } catch {
+      setError('Could not load this version.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <BibleVerseCard
+      reference={result.reference}
+      version={result.version}
+      verseText={result.text}
+      source={result.source}
+      matchType={result.match_type}
+      confidence={result.confidence}
+      loading={loading}
+      error={error}
+      onVersionChange={handleVersionChange}
+    />
+  )
+}
+
 // ── ResultsPanel ──────────────────────────────────────────────────────────────
 
-function ResultsPanel({ results, loadingRef }) {
-  if (results.length === 0 && !loadingRef) {
+function ResultsPanel({ results, isLoading }) {
+  if (results.length === 0 && !isLoading) {
     return (
       <div className="card p-8 text-center space-y-3 border-dashed">
         <div className="w-12 h-12 rounded-2xl bg-spirit-800 border border-spirit-700 flex items-center justify-center mx-auto">
@@ -339,7 +368,7 @@ function ResultsPanel({ results, loadingRef }) {
         <div>
           <p className="text-spirit-400 font-medium text-sm">No references found yet</p>
           <p className="text-spirit-600 text-xs mt-1 leading-relaxed">
-            Tap a highlighted reference in the transcript to look it up, or say something like{' '}
+            Tap a highlighted reference or say something like{' '}
             <span className="text-spirit-400 italic">"John three sixteen"</span>.
           </p>
         </div>
@@ -349,16 +378,65 @@ function ResultsPanel({ results, loadingRef }) {
 
   return (
     <div className="space-y-3">
-      {loadingRef && <BibleVerseCard loading />}
+      {isLoading && <BibleVerseCard loading />}
       {results.map((r, i) => (
-        <BibleVerseCard key={`${r.reference}-${i}`} {...r} />
+        <ResultCard key={`${r.reference}-${i}`} initial={r} />
       ))}
     </div>
   )
 }
 
+// ── RecentLookups ─────────────────────────────────────────────────────────────
+
+function RecentLookups({ onSelect }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['wordlookup-history'],
+    queryFn: async () => {
+      const { data } = await api.get('/wordlookup/history/')
+      return data
+    },
+    staleTime: 1000 * 30,
+  })
+
+  const items = data?.results ?? []
+  if (isLoading || items.length === 0) return null
+
+  return (
+    <div className="space-y-2">
+      <p className="label">Recent lookups</p>
+      <div className="card overflow-hidden divide-y divide-spirit-700/60">
+        {items.slice(0, 5).map((item) => (
+          <button
+            key={item.id}
+            onClick={() => onSelect(item.reference_found || item.query)}
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-spirit-700/30 transition-colors text-left gap-4"
+          >
+            <div className="min-w-0">
+              <p className="text-spirit-200 text-sm font-medium truncate">
+                {item.reference_found || item.query}
+              </p>
+              {item.verse_snippet && (
+                <p className="text-spirit-500 text-xs mt-0.5 truncate italic">
+                  {item.verse_snippet.slice(0, 80)}…
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs text-spirit-600 bg-spirit-800 border border-spirit-700 px-2 py-0.5 rounded-full">
+                {item.version}
+              </span>
+              <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5 text-spirit-600" stroke="currentColor" strokeWidth={1.6}>
+                <path d="M3 8h10M9 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── FileFallback ──────────────────────────────────────────────────────────────
-// Shown when Web Speech API is unavailable. Posts audio to Django Whisper endpoint.
 
 function FileFallback({ onTranscript }) {
   const fileRef = useRef(null)
@@ -368,10 +446,8 @@ function FileFallback({ onTranscript }) {
   const handleFile = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-
     setUploading(true)
     setError('')
-
     try {
       const fd = new FormData()
       fd.append('audio_file', file)
@@ -403,31 +479,16 @@ function FileFallback({ onTranscript }) {
           </p>
         </div>
       </div>
-
-      <input
-        ref={fileRef}
-        type="file"
-        accept=".mp3,.m4a,.aac,.ogg,.opus,.wav,.flac"
-        onChange={handleFile}
-        className="hidden"
-      />
-
+      <input ref={fileRef} type="file" accept=".mp3,.m4a,.aac,.ogg,.opus,.wav,.flac"
+             onChange={handleFile} className="hidden" />
       {error && (
-        <p className="text-flame-400 text-xs bg-flame-500/10 border border-flame-500/20 rounded-xl px-3 py-2">
-          {error}
-        </p>
+        <p className="text-flame-400 text-xs bg-flame-500/10 border border-flame-500/20 rounded-xl px-3 py-2">{error}</p>
       )}
-
-      <button
-        onClick={() => fileRef.current?.click()}
-        disabled={uploading}
-        className="btn-outline text-sm flex items-center gap-2 w-full justify-center"
-      >
+      <button onClick={() => fileRef.current?.click()} disabled={uploading}
+        className="btn-outline text-sm flex items-center gap-2 w-full justify-center">
         {uploading ? (
           <><svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"/></svg>Transcribing…</>
-        ) : (
-          <>Choose audio file</>
-        )}
+        ) : <>Choose audio file</>}
       </button>
     </div>
   )
@@ -446,69 +507,74 @@ export default function WordLookUpPage() {
     clearTranscript,
   } = useMicrophone({ continuous: true })
 
-  // All text in the box (could come from mic or file upload)
   const [displayTranscript, setDisplayTranscript] = useState('')
   const [displayInterim, setDisplayInterim] = useState('')
-
-  // Keep displayTranscript in sync with mic transcript
-  useEffect(() => {
-    if (transcript) setDisplayTranscript(transcript)
-  }, [transcript])
-
-  useEffect(() => {
-    setDisplayInterim(interimTranscript)
-  }, [interimTranscript])
-
-  // Detected references from the full transcript
   const [detectedRefs, setDetectedRefs] = useState([])
-
-  // Re-run parser whenever transcript changes
-  useEffect(() => {
-    const fullText = displayTranscript + ' ' + displayInterim
-    const refs = extractReferences(fullText.trim())
-    setDetectedRefs(refs)
-  }, [displayTranscript, displayInterim])
-
-  // Looked-up results (stub until WL2 wires the API)
   const [results, setResults] = useState([])
   const [lookingUp, setLookingUp] = useState(false)
+  const [lookupError, setLookupError] = useState(null)
 
-  // Called when user taps a highlighted reference
+  useEffect(() => { if (transcript) setDisplayTranscript(transcript) }, [transcript])
+  useEffect(() => { setDisplayInterim(interimTranscript) }, [interimTranscript])
+
+  useEffect(() => {
+    const fullText = (displayTranscript + ' ' + displayInterim).trim()
+    setDetectedRefs(extractReferences(fullText))
+  }, [displayTranscript, displayInterim])
+
+  // ── Live API lookup ───────────────────────────────────────────────────────
   const handleRefClick = useCallback(async (ref) => {
-    // Prevent duplicate
-    if (results.some(r => r.reference === ref.query)) return
+    // Don't re-lookup if already in results
+    if (results.some(r => r.reference?.toLowerCase() === ref.query?.toLowerCase())) return
 
     setLookingUp(true)
+    setLookupError(null)
 
-    // WL2 will replace this with a real API call to POST /api/wordlookup/lookup/
-    // For now, show the reference in the card with a note that the API is pending
-    setTimeout(() => {
-      setResults(prev => [
-        {
-          reference: ref.query,
-          version: 'ESV',
-          verseText: '',  // WL2 fills this in
-          source: 'api.bible — connected in WL2',
-          matchType: ref.type === 'thematic' ? 'inferred' : 'exact',
-          confidence: ref.type === 'thematic' ? 0.85 : 1,
-        },
-        ...prev,
-      ])
+    try {
+      const payload = ref.type === 'thematic'
+        ? { phrase: ref.query, versions: ['ESV'] }
+        : { reference: ref.query, versions: ['ESV'] }
+
+      const { data } = await api.post('/wordlookup/lookup/', payload)
+
+      if (data.results?.length) {
+        setResults(prev => [...data.results, ...prev])
+      } else {
+        setLookupError(`No verse found for "${ref.query}". Try a more specific reference.`)
+        setTimeout(() => setLookupError(null), 4000)
+      }
+    } catch (err) {
+      const msg = err.response?.data?.detail ?? 'Lookup failed. Check your connection.'
+      setLookupError(msg)
+      setTimeout(() => setLookupError(null), 4000)
+    } finally {
       setLookingUp(false)
-    }, 400)
+    }
   }, [results])
 
-  const wordCount = displayTranscript.trim()
-    ? displayTranscript.trim().split(/\s+/).length
-    : 0
-
-  const handleMicToggle = () => {
-    if (isListening) {
-      stop()
-    } else {
-      start()
+  // ── Lookup from history re-select ─────────────────────────────────────────
+  const handleHistorySelect = useCallback(async (referenceStr) => {
+    setLookingUp(true)
+    setLookupError(null)
+    try {
+      const { data } = await api.post('/wordlookup/lookup/', {
+        reference: referenceStr,
+        versions: ['ESV'],
+      })
+      if (data.results?.length) {
+        setResults(prev => [...data.results, ...prev])
+      }
+    } catch {
+      // silently ignore
+    } finally {
+      setLookingUp(false)
     }
-  }
+  }, [])
+
+  const wordCount = displayTranscript.trim()
+    ? displayTranscript.trim().split(/\s+/).length : 0
+
+  const handleMicToggle = () => { isListening ? stop() : start() }
 
   const handleClear = () => {
     clearTranscript()
@@ -516,11 +582,6 @@ export default function WordLookUpPage() {
     setDisplayInterim('')
     setDetectedRefs([])
     setResults([])
-  }
-
-  // File upload fallback: inject Whisper transcript into the same UI
-  const handleWhisperTranscript = (text) => {
-    setDisplayTranscript(text)
   }
 
   return (
@@ -539,29 +600,22 @@ export default function WordLookUpPage() {
         </p>
       </div>
 
-      {/* ── Mic / file-fallback ── */}
+      {/* Mic / file-fallback */}
       {isSupported ? (
         <div className="card p-8 flex flex-col items-center gap-5">
           <MicButton state={micState} onClick={handleMicToggle} />
-
-          {/* Frequency visualiser */}
           <FrequencyVisualiser analyserNode={analyserNode} active={isListening} />
-
-          {/* Status */}
           <p className={`text-sm text-center transition-colors duration-300 ${
-            isListening      ? 'text-flame-400' :
+            isListening            ? 'text-flame-400' :
             micState === 'processing' ? 'text-gold-400' :
-            micState === 'error'      ? 'text-flame-400' :
-                              'text-spirit-500'
+            micState === 'error'      ? 'text-flame-400' : 'text-spirit-500'
           }`}>
-            {micState === 'idle' && 'Tap to start listening'}
+            {micState === 'idle'       && 'Tap to start listening'}
             {micState === 'requesting' && 'Requesting microphone…'}
-            {micState === 'listening' && 'Listening… tap to stop'}
+            {micState === 'listening'  && 'Listening… tap to stop'}
             {micState === 'processing' && 'Finalising transcript…'}
-            {micState === 'error' && 'Microphone error — tap to retry'}
+            {micState === 'error'      && 'Microphone error — tap to retry'}
           </p>
-
-          {/* Error detail */}
           {micError && (
             <p className="text-xs text-flame-400 bg-flame-500/10 border border-flame-500/20 rounded-xl px-4 py-2.5 text-center max-w-sm leading-relaxed">
               {micError}
@@ -569,11 +623,10 @@ export default function WordLookUpPage() {
           )}
         </div>
       ) : (
-        // Browser doesn't support Web Speech API
-        <FileFallback onTranscript={handleWhisperTranscript} />
+        <FileFallback onTranscript={setDisplayTranscript} />
       )}
 
-      {/* ── Transcript with highlighted references ── */}
+      {/* Transcript */}
       <HighlightedTranscript
         transcript={displayTranscript}
         interimTranscript={displayInterim}
@@ -583,24 +636,19 @@ export default function WordLookUpPage() {
         onClear={handleClear}
       />
 
-      {/* Detected refs quick list — shows even before user taps them */}
+      {/* Detected refs quick list */}
       {detectedRefs.length > 0 && (
         <div className="space-y-2">
           <p className="label">Detected references</p>
           <div className="flex flex-wrap gap-2">
             {detectedRefs.map((ref, i) => (
-              <button
-                key={i}
-                onClick={() => handleRefClick(ref)}
+              <button key={i} onClick={() => handleRefClick(ref)}
                 className={`text-xs px-3 py-1.5 rounded-full border transition-all duration-150 ${
-                  results.some(r => r.reference === ref.query)
+                  results.some(r => r.reference?.toLowerCase() === ref.query?.toLowerCase())
                     ? 'bg-gold-500/15 border-gold-500/40 text-gold-400'
                     : 'border-spirit-600 text-spirit-400 hover:border-gold-500/40 hover:text-gold-400 hover:bg-gold-500/8'
-                }`}
-              >
-                {ref.type === 'thematic' && (
-                  <span className="mr-1 opacity-60">~</span>
-                )}
+                }`}>
+                {ref.type === 'thematic' && <span className="mr-1 opacity-60">~</span>}
                 {ref.query}
               </button>
             ))}
@@ -608,7 +656,14 @@ export default function WordLookUpPage() {
         </div>
       )}
 
-      {/* ── Results ── */}
+      {/* Lookup error toast */}
+      {lookupError && (
+        <p className="text-flame-400 text-sm bg-flame-500/10 border border-flame-500/20 rounded-xl px-4 py-3">
+          {lookupError}
+        </p>
+      )}
+
+      {/* Results */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <p className="label">
@@ -617,18 +672,19 @@ export default function WordLookUpPage() {
               : 'Results'}
           </p>
           {results.length > 0 && (
-            <button
-              onClick={() => setResults([])}
-              className="text-xs text-spirit-500 hover:text-spirit-300 transition-colors"
-            >
+            <button onClick={() => setResults([])}
+              className="text-xs text-spirit-500 hover:text-spirit-300 transition-colors">
               Clear results
             </button>
           )}
         </div>
-        <ResultsPanel results={results} loadingRef={lookingUp} />
+        <ResultsPanel results={results} isLoading={lookingUp} />
       </div>
 
-      {/* ── Saved verses tab stub (WL4) ── */}
+      {/* Recent lookups (from history endpoint) */}
+      <RecentLookups onSelect={handleHistorySelect} />
+
+      {/* Saved verses stub (WL4) */}
       <div className="card p-5 flex items-center gap-4 border-dashed opacity-50">
         <div className="w-9 h-9 rounded-xl bg-spirit-700 border border-spirit-600 flex items-center justify-center shrink-0">
           <svg viewBox="0 0 24 24" fill="none" className="w-4.5 h-4.5 text-spirit-400" stroke="currentColor" strokeWidth={1.6}>
@@ -638,25 +694,6 @@ export default function WordLookUpPage() {
         <div>
           <p className="text-spirit-300 text-sm font-medium">Saved verses</p>
           <p className="text-spirit-500 text-xs mt-0.5">Bookmark verses to your collection — coming in WL4</p>
-        </div>
-      </div>
-
-      {/* ── How it works ── */}
-      <div className="card p-5 border-l-2 border-l-gold-500 rounded-r-2xl rounded-l-none space-y-3">
-        <p className="label">How it works</p>
-        <div className="space-y-2.5 text-sm text-spirit-400 leading-relaxed">
-          <div className="flex items-start gap-2.5">
-            <span className="text-gold-500 shrink-0 mt-0.5 font-medium">1.</span>
-            <span>Your browser transcribes the sermon audio in real time — nothing is sent to a server.</span>
-          </div>
-          <div className="flex items-start gap-2.5">
-            <span className="text-gold-500 shrink-0 mt-0.5 font-medium">2.</span>
-            <span>Detected references (explicit like <em>John 3:16</em> or thematic like <em>the prodigal son</em>) are highlighted in gold. A <span className="text-spirit-300">~</span> prefix means it's a thematic match.</span>
-          </div>
-          <div className="flex items-start gap-2.5">
-            <span className="text-gold-500 shrink-0 mt-0.5 font-medium">3.</span>
-            <span>Tap any reference to look it up. Bible API integration arrives in WL2.</span>
-          </div>
         </div>
       </div>
 
