@@ -139,6 +139,28 @@ export function useSubmitAnswer() {
   })
 }
 
+// ─── Bulk import ──────────────────────────────────────────────────────────────
+
+export function useBulkImportCsv() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (file) => {
+      const formData = new FormData()
+      formData.append('csv_file', file)
+      const { data } = await api.post('/imports/bulk-csv/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sermons'] })
+      queryClient.invalidateQueries({ queryKey: KEYS.series() })
+      queryClient.invalidateQueries({ queryKey: KEYS.tags() })
+    },
+  })
+}
+
 // ─── Badges ───────────────────────────────────────────────────────────────────
 
 export function useBadges() {

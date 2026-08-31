@@ -25,3 +25,7 @@ dist-ssr
 # misc
 .DS_Store
 *.log
+
+# AI
+.agents
+.claude

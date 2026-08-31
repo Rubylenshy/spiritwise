@@ -1,9 +1,132 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import api from '../lib/axios'
-import { useSeries } from '../hooks/useSermons'
+import { useSeries, useBulkImportCsv } from '../hooks/useSermons'
 import { Spinner } from '../components/ui'
+
+const CSV_TEMPLATE = `id,slug,title,speaker,series,tags,description,scripture_reference,sermon_date,audio_url,is_published
+,,Walking in Purpose,Pastor James,Foundations,"Faith, Purpose",A message on discovering your calling.,John 3:16,2026-01-12,,true
+`
+
+function downloadCsvTemplate() {
+  const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'sermon-bulk-import-template.csv'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
+function BulkCsvImport() {
+  const fileRef = useRef(null)
+  const [file, setFile] = useState(null)
+  const [fileError, setFileError] = useState('')
+  const bulkImport = useBulkImportCsv()
+
+  const handleFileChange = e => {
+    const f = e.target.files[0]
+    setFile(f || null)
+    setFileError('')
+  }
+
+  const handleSubmit = e => {
+    e.preventDefault()
+    if (!file) { setFileError('Please select a CSV file.'); return }
+    bulkImport.mutate(file, {
+      onError: err => setFileError(err.response?.data?.detail ?? 'Bulk import failed. Please try again.'),
+    })
+  }
+
+  const reset = () => {
+    bulkImport.reset()
+    setFile(null)
+    setFileError('')
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  const result = bulkImport.data
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-start gap-3 bg-gold-500/8 border border-gold-500/20 rounded-2xl px-5 py-4">
+        <span className="text-gold-400 text-lg shrink-0 mt-0.5">✦</span>
+        <div className="space-y-1">
+          <p className="text-gold-400 font-medium text-sm">Bulk metadata import from CSV</p>
+          <p className="text-spirit-400 text-xs leading-relaxed">
+            Create sermon records or update existing ones (match by <span className="font-mono text-spirit-300">id</span> or <span className="font-mono text-spirit-300">slug</span>) in one pass.
+            This edits metadata only — audio still needs to be uploaded separately, or reference an already-hosted file via <span className="font-mono text-spirit-300">audio_url</span>.
+          </p>
+          <button type="button" onClick={downloadCsvTemplate} className="text-gold-400 hover:underline text-xs mt-1">
+            Download CSV template →
+          </button>
+        </div>
+      </div>
+
+      {!result ? (
+        <form onSubmit={handleSubmit} className="card p-6 space-y-4">
+          <div className="space-y-1.5">
+            <label className="label" htmlFor="csv_file">CSV file</label>
+            <input
+              ref={fileRef}
+              id="csv_file"
+              type="file"
+              accept=".csv,text/csv"
+              onChange={handleFileChange}
+              className="input-field file:mr-3 file:btn-ghost file:px-3 file:py-1 file:border-0 file:text-xs"
+            />
+            {file && <p className="text-spirit-400 text-xs">{file.name} · {(file.size / 1024).toFixed(1)} KB</p>}
+            {fileError && <p className="text-flame-400 text-xs">{fileError}</p>}
+          </div>
+
+          <button type="submit" disabled={bulkImport.isPending} className="btn-primary w-full flex items-center justify-center gap-2">
+            {bulkImport.isPending ? <><Spinner className="w-4 h-4" /> Importing…</> : 'Run bulk import'}
+          </button>
+        </form>
+      ) : (
+        <div className="space-y-4 animate-slide-up">
+          <div className="card p-5 grid grid-cols-3 gap-3 text-center">
+            <div>
+              <p className="text-2xl font-display text-gold-400">{result.created}</p>
+              <p className="text-spirit-500 text-xs">Created</p>
+            </div>
+            <div>
+              <p className="text-2xl font-display text-spirit-200">{result.updated}</p>
+              <p className="text-spirit-500 text-xs">Updated</p>
+            </div>
+            <div>
+              <p className={`text-2xl font-display ${result.failed ? 'text-flame-400' : 'text-spirit-200'}`}>{result.failed}</p>
+              <p className="text-spirit-500 text-xs">Failed</p>
+            </div>
+          </div>
+
+          <div className="card divide-y divide-spirit-700 max-h-96 overflow-y-auto">
+            {result.results.map(r => (
+              <div key={r.row} className="px-5 py-3 flex items-start gap-3 text-sm">
+                <span className="text-spirit-500 text-xs font-mono shrink-0 mt-0.5">row {r.row}</span>
+                {r.status === 'error' ? (
+                  <div className="flex-1 min-w-0">
+                    <span className="text-flame-400 text-xs uppercase tracking-wide">error</span>
+                    <p className="text-spirit-300 text-xs mt-0.5">{r.error}</p>
+                  </div>
+                ) : (
+                  <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                    <span className="text-spirit-200 truncate">{r.title}</span>
+                    <span className={`text-xs shrink-0 ${r.status === 'created' ? 'text-gold-400' : 'text-spirit-400'}`}>{r.status}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <button onClick={reset} className="btn-ghost w-full text-sm">Import another CSV</button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 const ACCEPTED_FORMATS = '.mp3,.m4a,.aac,.ogg,.opus,.wav,.flac'
 
@@ -322,29 +445,52 @@ function SuccessCard({ result, onUploadAnother }) {
 
 export default function CloudImportPage() {
   const [result, setResult] = useState(null)
+  const [mode, setMode] = useState('single') // 'single' | 'bulk'
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-slide-up">
-      {/* Admin notice */}
-      <div className="flex items-start gap-3 bg-gold-500/8 border border-gold-500/20 rounded-2xl px-5 py-4">
-        <span className="text-gold-400 text-lg shrink-0 mt-0.5">✦</span>
-        <div>
-          <p className="text-gold-400 font-medium text-sm">Admin only — uploads directly to Cloudflare R2</p>
-          <p className="text-spirit-400 text-xs mt-0.5 leading-relaxed">
-            Files are stored securely in R2 and streamed through Django's authenticated proxy. The raw URL is never exposed to users.
-          </p>
-        </div>
+      {/* Mode tabs */}
+      <div className="flex gap-2 p-1 bg-spirit-800 rounded-2xl">
+        <button
+          onClick={() => setMode('single')}
+          className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${mode === 'single' ? 'bg-spirit-700 text-gold-400' : 'text-spirit-400 hover:text-spirit-200'}`}
+        >
+          Upload one sermon
+        </button>
+        <button
+          onClick={() => setMode('bulk')}
+          className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${mode === 'bulk' ? 'bg-spirit-700 text-gold-400' : 'text-spirit-400 hover:text-spirit-200'}`}
+        >
+          Bulk CSV import
+        </button>
       </div>
 
-      <FormatGuide />
+      {mode === 'single' ? (
+        <>
+          {/* Admin notice */}
+          <div className="flex items-start gap-3 bg-gold-500/8 border border-gold-500/20 rounded-2xl px-5 py-4">
+            <span className="text-gold-400 text-lg shrink-0 mt-0.5">✦</span>
+            <div>
+              <p className="text-gold-400 font-medium text-sm">Admin only — uploads directly to Cloudflare R2</p>
+              <p className="text-spirit-400 text-xs mt-0.5 leading-relaxed">
+                Files are stored securely in R2 and streamed through Django&apos;s authenticated proxy. The raw URL is never exposed to users.
+              </p>
+            </div>
+          </div>
 
-      {result ? (
-        <SuccessCard result={result} onUploadAnother={() => setResult(null)} />
+          <FormatGuide />
+
+          {result ? (
+            <SuccessCard result={result} onUploadAnother={() => setResult(null)} />
+          ) : (
+            <div className="card p-6">
+              <p className="label mb-5">Upload sermon audio</p>
+              <UploadForm onSuccess={setResult} />
+            </div>
+          )}
+        </>
       ) : (
-        <div className="card p-6">
-          <p className="label mb-5">Upload sermon audio</p>
-          <UploadForm onSuccess={setResult} />
-        </div>
+        <BulkCsvImport />
       )}
     </div>
   )
