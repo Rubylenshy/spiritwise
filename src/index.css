@@ -3,6 +3,22 @@
 @tailwind utilities;
 
 @layer base {
+  /* Landing page theme tokens (RGB triplets so Tailwind opacity modifiers work).
+     Dark values follow the landing template: #171717 bg, white text, blue-500/400 accent. */
+  :root {
+    --lp-bg: 250 250 250;
+    --lp-fg: 23 23 23;
+    --lp-accent: 37 99 235;       /* blue-600 */
+    --lp-accent-soft: 59 130 246; /* blue-500 */
+  }
+
+  .dark {
+    --lp-bg: 23 23 23;            /* #171717 */
+    --lp-fg: 255 255 255;
+    --lp-accent: 59 130 246;      /* blue-500 */
+    --lp-accent-soft: 96 165 250; /* blue-400 */
+  }
+
   * {
     box-sizing: border-box;
   }
@@ -70,5 +86,48 @@
 
   .label {
     @apply text-xs font-medium text-spirit-400 uppercase tracking-widest;
+  }
+
+  /* ── Landing page (glass-over-video design system) ─────────────────── */
+
+  .lp-glass {
+    @apply bg-white/60 dark:bg-white/[0.03] backdrop-blur-md border border-black/10 dark:border-white/10;
+  }
+
+  .lp-card {
+    @apply lp-glass rounded-2xl ring-1 ring-transparent hover:ring-blue-500/30 transition-all duration-300
+           shadow-[0_20px_60px_-15px_rgba(0,0,0,.15)] dark:shadow-[0_20px_60px_-15px_rgba(0,0,0,.8)];
+  }
+
+  .lp-focus {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60;
+  }
+
+  .lp-btn-primary {
+    @apply lp-focus inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium text-white
+           bg-gradient-to-b from-neutral-700 to-neutral-950 border border-white/10
+           hover:from-neutral-600 hover:to-neutral-900 focus-visible:ring-4 focus-visible:ring-blue-500/40
+           transition-all duration-200 active:scale-95
+           shadow-[0_10px_30px_-10px_rgba(0,0,0,.6)];
+  }
+
+  .lp-btn-glass {
+    @apply lp-focus inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium
+           backdrop-blur-md transition-all duration-200 active:scale-95
+           bg-white/60 border border-black/10 text-neutral-900 hover:bg-white/80
+           dark:bg-slate-950/60 dark:border-white/10 dark:text-white dark:hover:bg-slate-900/60;
+  }
+
+  .lp-icon-btn {
+    @apply lp-focus inline-flex items-center justify-center rounded-lg text-lp-fg/70 hover:text-lp-fg
+           hover:bg-lp-fg/5 transition-colors;
+  }
+
+  .lp-eyebrow {
+    @apply text-xs font-medium uppercase tracking-[0.2em] text-lp-accent-soft;
+  }
+
+  .lp-h2 {
+    @apply font-light tracking-tighter leading-[1.05] text-lp-fg text-[clamp(2rem,4vw,3.25rem)];
   }
 }

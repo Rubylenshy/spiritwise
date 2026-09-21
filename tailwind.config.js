@@ -1,6 +1,9 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
+  // Class strategy — ThemeContext toggles `dark` on <html>. Only the landing
+  // page uses `dark:` variants today; app pages are dark-only.
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
@@ -27,11 +30,19 @@ export default {
           500: '#E8603C',
           400: '#F07858',
         },
+        // Landing page theme tokens — values live in index.css (:root / .dark)
+        lp: {
+          bg: 'rgb(var(--lp-bg) / <alpha-value>)',
+          fg: 'rgb(var(--lp-fg) / <alpha-value>)',
+          accent: 'rgb(var(--lp-accent) / <alpha-value>)',
+          'accent-soft': 'rgb(var(--lp-accent-soft) / <alpha-value>)',
+        },
       },
       fontFamily: {
         display: ['"Cormorant Garamond"', 'Georgia', 'serif'],
         sans: ['"DM Sans"', 'system-ui', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'monospace'],
+        inter: ['Inter', 'system-ui', 'sans-serif'],
       },
       backgroundImage: {
         'radial-spirit': 'radial-gradient(ellipse at 30% 20%, #1B2438 0%, #0B0F1A 70%)',

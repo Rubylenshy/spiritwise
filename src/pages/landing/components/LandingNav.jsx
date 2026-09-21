@@ -1,5 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import {
+  ArrowRight, AudioWaveform, ChevronDown, ChevronRight, Flame, LayoutDashboard,
+  LogOut, Menu, ScanSearch, Sparkles, User, X,
+} from 'lucide-react'
+import useAuthStore from '../../../store/authStore'
+import ThemeToggle from '../../../components/ThemeToggle'
 
 const NAV_LINKS = [
   { label: 'Features', href: '#features' },
@@ -7,165 +13,233 @@ const NAV_LINKS = [
   { label: 'Pricing', href: '#pricing' },
 ]
 
-function ProductDropdown({ open }) {
+const navLinkClass =
+  'lp-focus px-4 py-2 text-sm text-lp-fg/70 hover:text-lp-fg transition-colors rounded-lg hover:bg-lp-fg/5'
+
+function displayName(user) {
+  return user?.first_name || user?.username || 'Friend'
+}
+
+function Avatar({ user, size = 'w-8 h-8' }) {
+  const initial = (user?.first_name?.[0] ?? user?.username?.[0] ?? '?').toUpperCase()
+  return (
+    <span className={`${size} rounded-full overflow-hidden shrink-0 flex items-center justify-center bg-blue-500/15 border border-blue-500/30 text-lp-accent-soft text-sm font-medium`}>
+      {user?.avatar ? <img src={user.avatar} alt="" className="w-full h-full object-cover" /> : initial}
+    </span>
+  )
+}
+
+/** Closes `open` state when clicking outside `ref` or pressing Escape. */
+function useDismiss(ref, open, onClose) {
+  useEffect(() => {
+    if (!open) return
+    const onPointer = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) onClose()
+    }
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('mousedown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [ref, open, onClose])
+}
+
+function Dropdown({ open, align = 'center', className = '', children }) {
+  const position = align === 'right' ? 'right-0' : 'left-1/2 -translate-x-1/2'
   return (
     <div
-      className={`absolute top-full left-1/2 -translate-x-1/2 mt-3 w-72 transition-all duration-200 ${
+      className={`absolute top-full ${position} pt-3 transition-all duration-200 ${
         open ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-2 pointer-events-none'
-      }`}
+      } ${className}`}
     >
-      {/* Arrow */}
-      <div className="flex justify-center -mb-px relative z-10">
-        <div className="w-3 h-3 bg-spirit-800 border-l border-t border-spirit-700 rotate-45 -mt-1.5" />
-      </div>
-
-      <div className="bg-spirit-800 border border-spirit-700 rounded-2xl overflow-hidden shadow-2xl shadow-spirit-950/60">
-        <Link
-          to="/wordlookup"
-          className="flex items-start gap-4 p-5 hover:bg-spirit-700/50 transition-colors group"
-        >
-          {/* Icon */}
-          <div className="w-10 h-10 rounded-xl bg-gold-500/10 border border-gold-500/20 flex items-center justify-center shrink-0 group-hover:bg-gold-500/20 transition-colors">
-            <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-gold-400" stroke="currentColor" strokeWidth={1.7}>
-              <path d="M12 18.5a6.5 6.5 0 100-13 6.5 6.5 0 000 13z" strokeLinecap="round"/>
-              <path d="M12 8v4l2.5 2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M19.5 19.5l-2-2" strokeLinecap="round"/>
-              <path d="M8 12c0-.5.1-1 .3-1.4M16 10a4 4 0 00-6.8-2" strokeLinecap="round"/>
-            </svg>
-          </div>
-
-          {/* Text */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between">
-              <p className="text-spirit-100 font-medium text-sm">WordLookUp</p>
-              <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5 text-spirit-500 group-hover:text-gold-400 transition-colors" stroke="currentColor" strokeWidth={1.5}>
-                <path d="M3 8h10M9 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <p className="text-spirit-400 text-xs mt-1 leading-relaxed">
-              Hear a scripture in a sermon? Tap once — get the full passage instantly.
-            </p>
-          </div>
-        </Link>
-
-        <div className="mx-5 border-t border-spirit-700/60" />
-
-        <div className="px-5 py-3">
-          <p className="text-spirit-600 text-xs uppercase tracking-widest">More coming soon</p>
-        </div>
+      <div className="rounded-2xl overflow-hidden backdrop-blur-lg bg-white/95 dark:bg-[#171717]/95 border border-black/10 dark:border-white/10 shadow-[0_20px_60px_-15px_rgba(0,0,0,.5)]">
+        {children}
       </div>
     </div>
   )
 }
 
-export default function LandingNav({ onWatchDemo }) {
-  const [scrolled, setScrolled] = useState(false)
+function ProductDropdown({ open }) {
+  return (
+    <Dropdown open={open} className="w-72">
+      <Link to="/wordlookup" className="lp-focus flex items-start gap-4 p-5 hover:bg-lp-fg/5 transition-colors group">
+        <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0 group-hover:bg-blue-500/20 transition-colors">
+          <ScanSearch className="w-5 h-5 text-lp-accent-soft" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <p className="text-lp-fg font-medium text-sm">WordLookUp</p>
+            <ArrowRight className="w-4 h-4 text-lp-fg/60 group-hover:text-lp-accent-soft transition-colors" />
+          </div>
+          <p className="text-lp-fg/60 text-xs mt-1 leading-relaxed">
+            Hear a scripture in a sermon? Tap once — get the full passage instantly.
+          </p>
+        </div>
+      </Link>
+      <div className="mx-5 border-t border-black/5 dark:border-white/5" />
+      <div className="px-5 py-3">
+        <p className="text-lp-fg/60 text-xs uppercase tracking-widest">More coming soon</p>
+      </div>
+    </Dropdown>
+  )
+}
+
+function ProfileMenu({ user, onSignOut }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useDismiss(ref, open, () => setOpen(false))
+
+  const itemClass =
+    'lp-focus w-full flex items-center gap-3 px-4 py-2.5 text-sm text-lp-fg/70 hover:text-lp-fg hover:bg-lp-fg/5 transition-colors'
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="lp-focus flex items-center gap-2 rounded-full pl-1 pr-3 py-1 border border-black/10 dark:border-white/10 hover:bg-lp-fg/5 transition-colors"
+      >
+        <Avatar user={user} />
+        <span className="text-sm text-lp-fg max-w-[8rem] truncate">{displayName(user)}</span>
+        <ChevronDown className={`w-4 h-4 text-lp-fg/60 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      <Dropdown open={open} align="right" className="w-64">
+        <div role="menu">
+          <div className="px-4 py-4 border-b border-black/5 dark:border-white/5">
+            <p className="text-sm font-medium text-lp-fg truncate">
+              {user?.first_name ? `${user.first_name} ${user.last_name ?? ''}`.trim() : user?.username}
+            </p>
+            {user?.username && <p className="text-xs text-lp-fg/60 truncate">@{user.username}</p>}
+            <div className="flex items-center gap-4 mt-3 text-xs">
+              <span className="flex items-center gap-1.5 text-flame-400">
+                <Flame className="w-4 h-4" />
+                {user?.current_streak ?? 0} day streak
+              </span>
+              <span className="flex items-center gap-1.5 text-lp-accent-soft">
+                <Sparkles className="w-4 h-4" />
+                {(user?.xp_points ?? 0).toLocaleString()} XP
+              </span>
+            </div>
+          </div>
+          <div className="py-1">
+            <Link to="/home" role="menuitem" className={itemClass}>
+              <LayoutDashboard className="w-4 h-4" /> Go to dashboard
+            </Link>
+            <Link to="/profile" role="menuitem" className={itemClass}>
+              <User className="w-4 h-4" /> Profile
+            </Link>
+          </div>
+          <div className="py-1 border-t border-black/5 dark:border-white/5">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => { setOpen(false); onSignOut() }}
+              className={itemClass}
+            >
+              <LogOut className="w-4 h-4" /> Sign out
+            </button>
+          </div>
+        </div>
+      </Dropdown>
+    </div>
+  )
+}
+
+export default function LandingNav() {
   const [productOpen, setProductOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const productRef = useRef(null)
-  const navigate = useNavigate()
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const user = useAuthStore((s) => s.user)
+  const logout = useAuthStore((s) => s.logout)
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 60)
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handler = (e) => {
-      if (productRef.current && !productRef.current.contains(e.target)) {
-        setProductOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
+  useDismiss(productRef, productOpen, () => setProductOpen(false))
 
   const scrollTo = (hash) => {
     setMobileOpen(false)
-    const el = document.querySelector(hash)
-    if (el) el.scrollIntoView({ behavior: 'smooth' })
+    document.querySelector(hash)?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const signOut = () => {
+    setMobileOpen(false)
+    logout()
   }
 
   return (
     <>
-      <header
-        className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
-          scrolled
-            ? 'bg-spirit-900/95 backdrop-blur-sm border-b border-spirit-800 shadow-lg shadow-spirit-950/40'
-            : 'bg-transparent'
-        }`}
-      >
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 lg:h-18">
+      <header className="sticky top-0 z-30 backdrop-blur-lg bg-white/70 dark:bg-[#171717]/70 border-b border-black/5 dark:border-white/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
 
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-2.5 shrink-0">
-              <span className="text-2xl font-display text-gold-400 italic leading-none">✦</span>
-              <span className="font-display text-xl text-spirit-100 tracking-wide">SpiritWise</span>
+            <Link to="/" className="lp-focus flex items-center gap-2 shrink-0 rounded-lg">
+              <AudioWaveform className="w-6 h-6 text-lp-accent-soft" />
+              <span className="text-lg font-semibold tracking-tight text-lp-fg">SpiritWise</span>
             </Link>
 
             {/* Desktop nav */}
             <nav className="hidden lg:flex items-center gap-1">
               {NAV_LINKS.map(({ label, href }) => (
-                <button
-                  key={label}
-                  onClick={() => scrollTo(href)}
-                  className="px-4 py-2 text-sm text-spirit-300 hover:text-spirit-100 transition-colors rounded-lg hover:bg-spirit-800/50"
-                >
+                <button key={label} type="button" onClick={() => scrollTo(href)} className={navLinkClass}>
                   {label}
                 </button>
               ))}
 
-              {/* Product dropdown */}
-              <div ref={productRef} className="relative">
+              <div
+                ref={productRef}
+                className="relative"
+                onMouseEnter={() => setProductOpen(true)}
+                onMouseLeave={() => setProductOpen(false)}
+              >
                 <button
-                  onClick={() => setProductOpen(v => !v)}
-                  onMouseEnter={() => setProductOpen(true)}
-                  className="flex items-center gap-1 px-4 py-2 text-sm text-spirit-300 hover:text-spirit-100 transition-colors rounded-lg hover:bg-spirit-800/50"
+                  type="button"
+                  onClick={() => setProductOpen((v) => !v)}
+                  aria-expanded={productOpen}
+                  className={`${navLinkClass} flex items-center gap-1`}
                 >
                   Product
-                  <svg
-                    viewBox="0 0 16 16" fill="none"
-                    className={`w-3.5 h-3.5 transition-transform duration-200 ${productOpen ? 'rotate-180' : ''}`}
-                    stroke="currentColor" strokeWidth={1.5}
-                  >
-                    <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
-                  </svg>
+                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${productOpen ? 'rotate-180' : ''}`} />
                 </button>
-                <div onMouseLeave={() => setProductOpen(false)}>
-                  <ProductDropdown open={productOpen} />
-                </div>
+                <ProductDropdown open={productOpen} />
               </div>
             </nav>
 
-            {/* Desktop CTAs */}
-            <div className="hidden lg:flex items-center gap-3">
-              <Link
-                to="/login"
-                className="px-4 py-2 text-sm text-spirit-300 hover:text-spirit-100 transition-colors"
-              >
-                Sign in
-              </Link>
-              <Link
-                to="/signup"
-                className="px-5 py-2 text-sm font-medium bg-gold-500 hover:bg-gold-400 text-spirit-900 rounded-xl transition-all duration-200 active:scale-95"
-              >
-                Get started
-              </Link>
+            {/* Desktop actions */}
+            <div className="hidden lg:flex items-center gap-2">
+              <ThemeToggle />
+              {isAuthenticated ? (
+                <ProfileMenu user={user} onSignOut={signOut} />
+              ) : (
+                <>
+                  <Link to="/login" className={navLinkClass}>Sign in</Link>
+                  <Link to="/signup" className="lp-btn-primary group">
+                    Get started
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
+                </>
+              )}
             </div>
 
-            {/* Mobile hamburger */}
-            <button
-              onClick={() => setMobileOpen(v => !v)}
-              className="lg:hidden w-9 h-9 flex flex-col items-center justify-center gap-1.5 text-spirit-300 hover:text-spirit-100 transition-colors"
-              aria-label="Toggle menu"
-            >
-              <span className={`w-5 h-px bg-current transition-all duration-200 ${mobileOpen ? 'rotate-45 translate-y-[3.5px]' : ''}`} />
-              <span className={`w-5 h-px bg-current transition-all duration-200 ${mobileOpen ? 'opacity-0' : ''}`} />
-              <span className={`w-5 h-px bg-current transition-all duration-200 ${mobileOpen ? '-rotate-45 -translate-y-[3.5px]' : ''}`} />
-            </button>
+            {/* Mobile actions */}
+            <div className="lg:hidden flex items-center gap-1">
+              <ThemeToggle />
+              <button
+                type="button"
+                onClick={() => setMobileOpen(true)}
+                className="lp-icon-btn w-9 h-9"
+                aria-label="Open menu"
+                aria-expanded={mobileOpen}
+              >
+                {isAuthenticated ? <Avatar user={user} size="w-7 h-7" /> : <Menu className="w-5 h-5" />}
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -176,69 +250,79 @@ export default function LandingNav({ onWatchDemo }) {
           mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
       >
-        {/* Backdrop */}
-        <div
-          className="absolute inset-0 bg-spirit-950/80 backdrop-blur-sm"
-          onClick={() => setMobileOpen(false)}
-        />
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
 
-        {/* Panel */}
         <div
-          className={`absolute top-0 right-0 w-72 h-full bg-spirit-900 border-l border-spirit-800 flex flex-col transition-transform duration-300 ${
+          className={`absolute top-0 right-0 w-72 max-w-[85vw] h-full flex flex-col backdrop-blur-lg bg-white/90 dark:bg-[#171717]/90 border-l border-black/10 dark:border-white/10 transition-transform duration-300 ${
             mobileOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
         >
-          <div className="flex items-center justify-between px-6 h-16 border-b border-spirit-800">
-            <span className="font-display text-gold-400 text-lg italic">✦ Menu</span>
-            <button
-              onClick={() => setMobileOpen(false)}
-              className="text-spirit-500 hover:text-spirit-200 transition-colors"
-            >
-              <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={1.8}>
-                <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round"/>
-              </svg>
+          <div className="flex items-center justify-between px-5 h-16 border-b border-black/5 dark:border-white/5">
+            <span className="flex items-center gap-2 text-lp-fg font-medium">
+              <AudioWaveform className="w-5 h-5 text-lp-accent-soft" /> Menu
+            </span>
+            <button type="button" onClick={() => setMobileOpen(false)} className="lp-icon-btn w-9 h-9" aria-label="Close menu">
+              <X className="w-5 h-5" />
             </button>
           </div>
 
-          <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+          {isAuthenticated && (
+            <div className="px-5 py-4 border-b border-black/5 dark:border-white/5 flex items-center gap-3">
+              <Avatar user={user} size="w-10 h-10" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-lp-fg truncate">{displayName(user)}</p>
+                <p className="text-xs text-lp-fg/60">
+                  {user?.current_streak ?? 0} day streak · {(user?.xp_points ?? 0).toLocaleString()} XP
+                </p>
+              </div>
+            </div>
+          )}
+
+          <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
             {NAV_LINKS.map(({ label, href }) => (
               <button
                 key={label}
+                type="button"
                 onClick={() => scrollTo(href)}
-                className="w-full text-left px-4 py-3 text-spirit-300 hover:text-spirit-100 hover:bg-spirit-800 rounded-xl transition-colors text-sm"
+                className="lp-focus w-full text-left px-4 py-3 text-sm text-lp-fg/70 hover:text-lp-fg hover:bg-lp-fg/5 rounded-xl transition-colors"
               >
                 {label}
               </button>
             ))}
-
-            <div className="px-4 pt-2 pb-1">
-              <p className="text-spirit-600 text-xs uppercase tracking-widest mb-2">Product</p>
-            </div>
+            <p className="px-4 pt-3 pb-1 text-lp-fg/60 text-xs uppercase tracking-widest">Product</p>
             <Link
               to="/wordlookup"
               onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 text-spirit-300 hover:text-gold-400 hover:bg-spirit-800 rounded-xl transition-colors text-sm"
+              className="lp-focus flex items-center gap-3 px-4 py-3 text-sm text-lp-fg/70 hover:text-lp-fg hover:bg-lp-fg/5 rounded-xl transition-colors"
             >
-              <span className="text-gold-500">✦</span>
+              <ScanSearch className="w-4 h-4 text-lp-accent-soft" />
               WordLookUp
             </Link>
           </nav>
 
-          <div className="px-4 py-6 border-t border-spirit-800 space-y-3">
-            <Link
-              to="/login"
-              onClick={() => setMobileOpen(false)}
-              className="block w-full text-center px-5 py-3 text-sm text-spirit-300 border border-spirit-700 hover:border-spirit-500 hover:text-spirit-100 rounded-xl transition-colors"
-            >
-              Sign in
-            </Link>
-            <Link
-              to="/signup"
-              onClick={() => setMobileOpen(false)}
-              className="block w-full text-center px-5 py-3 text-sm font-medium bg-gold-500 hover:bg-gold-400 text-spirit-900 rounded-xl transition-all duration-200"
-            >
-              Get started free
-            </Link>
+          <div className="px-4 py-5 border-t border-black/5 dark:border-white/5 space-y-2">
+            {isAuthenticated ? (
+              <>
+                <Link to="/home" className="lp-btn-primary w-full">
+                  <LayoutDashboard className="w-4 h-4" /> Go to dashboard
+                </Link>
+                <Link to="/profile" className="lp-btn-glass w-full">
+                  <User className="w-4 h-4" /> Profile
+                </Link>
+                <button type="button" onClick={signOut} className="lp-focus w-full flex items-center justify-center gap-2 py-2.5 text-sm text-lp-fg/60 hover:text-lp-fg transition-colors rounded-xl">
+                  <LogOut className="w-4 h-4" /> Sign out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" onClick={() => setMobileOpen(false)} className="lp-btn-glass w-full">
+                  Sign in
+                </Link>
+                <Link to="/signup" onClick={() => setMobileOpen(false)} className="lp-btn-primary w-full">
+                  Get started free <ChevronRight className="w-4 h-4" />
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>

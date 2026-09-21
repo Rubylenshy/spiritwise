@@ -1,153 +1,121 @@
-import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ArrowRight, Flame, Library, UserPlus } from 'lucide-react'
+import { useReveal, revealClass, revealDelay } from '../useReveal'
+import { useSessionCta } from '../useSessionCta'
 
 const STEPS = [
   {
     number: '01',
+    Icon: UserPlus,
     title: 'Create your account',
     description: 'Sign up in under 30 seconds. No credit card, no trial expiry — your library and streaks start immediately.',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6" stroke="currentColor" strokeWidth={1.6}>
-        <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8zM20 8v6M23 11h-6" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    ),
   },
   {
     number: '02',
+    Icon: Library,
     title: 'Browse the sermon library',
     description: 'Search by speaker, topic, or scripture. Follow a series, or discover something new from voices around the world.',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6" stroke="currentColor" strokeWidth={1.6}>
-        <path d="M9 19V6l12-3v13M9 19c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm12 0c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2z" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    ),
   },
   {
     number: '03',
+    Icon: Flame,
     title: 'Build your streak',
     description: 'Listen daily, answer reflection questions, earn XP. At 7 days you unlock a streak freeze — so life can\'t break your momentum.',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6 text-flame-400" stroke="currentColor" strokeWidth={1.6}>
-        <path d="M12 2c0 6-8 8-8 14a8 8 0 1016 0c0-6-8-8-8-14z" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M12 22c-2.8 0-4-1.6-4-3.5s1.2-3.5 4-5c2.8 1.5 4 3.1 4 5s-1.2 3.5-4 3.5z" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    ),
     accent: true,
   },
 ]
 
+/**
+ * Layout:
+ * - Mobile: vertical timeline — number column on the left (with a connector
+ *   running down to the next step), step card on the right.
+ * - Desktop: three-column grid (1fr | auto | 1fr) — number sits on the
+ *   centre line, cards alternate left/right.
+ */
 export default function GettingStartedSection() {
-  const [visible, setVisible] = useState(false)
-  const ref = useRef(null)
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) setVisible(true) },
-      { threshold: 0.1 }
-    )
-    if (ref.current) observer.observe(ref.current)
-    return () => observer.disconnect()
-  }, [])
+  const [ref, visible] = useReveal()
+  const cta = useSessionCta({ label: 'Start for free', to: '/signup' })
 
   return (
-    <section className="relative py-24 lg:py-32 bg-spirit-800/10 overflow-hidden">
-      {/* Background quote watermark */}
-      <div
-        className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden opacity-[0.02]"
-        aria-hidden="true"
-      >
-        <p className="font-display text-[clamp(4rem,15vw,12rem)] text-spirit-100 italic whitespace-nowrap">
+    <section className="relative py-24 lg:py-32 overflow-hidden">
+      {/* Background watermark */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden" aria-hidden="true">
+        <p className="text-[clamp(4rem,15vw,12rem)] font-light tracking-tighter text-lp-fg/[0.03] whitespace-nowrap">
           Start today
         </p>
       </div>
 
-      <div ref={ref} className="relative max-w-5xl mx-auto px-6 lg:px-8">
-        {/* Header */}
-        <div className={`text-center mb-16 transition-all duration-700 ${visible ? 'opacity-100' : 'opacity-0 translate-y-6'}`}>
-          <p className="text-gold-500/70 text-xs uppercase tracking-[0.2em] mb-4">Three steps</p>
-          <h2 className="font-display text-[clamp(2rem,4vw,3.5rem)] text-spirit-100 italic leading-tight">
-            You're one minute away from
+      <div ref={ref} className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className={`text-center mb-16 ${revealClass(visible)}`}>
+          <p className="lp-eyebrow mb-4">Three steps</p>
+          <h2 className="lp-h2">
+            You&apos;re one minute away from
             <br />
-            <span className="text-gold-400">your first sermon.</span>
+            <span className="text-lp-accent-soft">your first sermon.</span>
           </h2>
         </div>
 
-        {/* Steps */}
-        <div className="relative">
-          {/* Vertical connector line — desktop */}
-          <div className="hidden lg:block absolute left-1/2 -translate-x-px top-10 bottom-10 w-px bg-gradient-to-b from-transparent via-spirit-700 to-transparent" />
+        <ol className="relative">
+          {/* Desktop centre connector */}
+          <div
+            className="hidden lg:block absolute left-1/2 -translate-x-1/2 top-7 bottom-7 w-px bg-gradient-to-b from-transparent via-black/15 dark:via-white/15 to-transparent"
+            aria-hidden="true"
+          />
 
-          <div className="space-y-8 lg:space-y-0">
-            {STEPS.map((step, i) => {
-              const isEven = i % 2 === 0
-              return (
+          {STEPS.map((step, i) => {
+            const onLeft = i % 2 === 0
+            const isLast = i === STEPS.length - 1
+            const { Icon } = step
+            const tone = step.accent
+              ? { ring: 'border-flame-500/40', text: 'text-flame-400', chip: 'bg-flame-500/10 border-flame-500/20 text-flame-400' }
+              : { ring: 'border-blue-500/40', text: 'text-lp-accent-soft', chip: 'bg-blue-500/10 border-blue-500/20 text-lp-accent-soft' }
+
+            return (
+              <li
+                key={step.number}
+                className={`relative grid grid-cols-[auto_1fr] gap-x-4 sm:gap-x-6 lg:grid-cols-[1fr_auto_1fr] lg:gap-x-10 lg:items-center ${
+                  isLast ? '' : 'pb-8 lg:pb-14'
+                } ${revealClass(visible)}`}
+                style={revealDelay(i + 1, 150)}
+              >
+                {/* Mobile connector — from this number down to the next */}
+                {!isLast && (
+                  <div
+                    className="lg:hidden absolute left-6 top-12 bottom-0 w-px -translate-x-1/2 bg-black/10 dark:bg-white/10"
+                    aria-hidden="true"
+                  />
+                )}
+
+                {/* Step number */}
                 <div
-                  key={step.number}
-                  className={`relative lg:grid lg:grid-cols-2 lg:gap-12 lg:items-center transition-all duration-700 ${
-                    visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-                  } lg:mb-16`}
-                  style={{ transitionDelay: `${i * 150}ms` }}
+                  className={`col-start-1 row-start-1 lg:col-start-2 relative z-10 w-12 h-12 lg:w-14 lg:h-14 rounded-full border-2 bg-lp-bg flex items-center justify-center ${tone.ring}`}
                 >
-                  {/* Content — alternates sides on desktop */}
-                  <div className={`flex flex-col justify-center ${isEven ? 'lg:text-right lg:pr-8' : 'lg:order-2 lg:pl-8'}`}>
-                    <div className={`flex items-center gap-3 mb-3 ${isEven ? 'lg:justify-end' : ''}`}>
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                        step.accent
-                          ? 'bg-flame-500/10 border border-flame-500/20 text-flame-400'
-                          : 'bg-gold-500/10 border border-gold-500/20 text-gold-400'
-                      } ${isEven ? 'lg:order-2' : ''}`}>
-                        {step.icon}
-                      </div>
-                    </div>
-                    <h3 className="font-display text-2xl text-spirit-100 italic mb-2">{step.title}</h3>
-                    <p className="text-spirit-400 text-sm leading-relaxed max-w-xs lg:max-w-none">
-                      {step.description}
-                    </p>
-                  </div>
-
-                  {/* Step number circle — center for desktop */}
-                  <div className={`hidden lg:flex absolute left-1/2 -translate-x-1/2 items-center justify-center ${isEven ? '' : ''}`}>
-                    <div className={`w-14 h-14 rounded-full bg-spirit-900 border-2 flex items-center justify-center ${
-                      step.accent ? 'border-flame-500/40' : 'border-gold-500/40'
-                    }`}>
-                      <span className={`font-display text-lg italic ${step.accent ? 'text-flame-400' : 'text-gold-400'}`}>
-                        {step.number}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Mobile step number */}
-                  <div className={`lg:hidden flex items-center gap-3 mb-4 mt-8 ${i === 0 ? 'mt-0' : ''}`}>
-                    <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                      step.accent ? 'border-flame-500/40 bg-flame-500/5' : 'border-gold-500/40 bg-gold-500/5'
-                    }`}>
-                      <span className={`font-display text-sm italic ${step.accent ? 'text-flame-400' : 'text-gold-400'}`}>
-                        {step.number}
-                      </span>
-                    </div>
-                    <div className="h-px flex-1 bg-spirit-800" />
-                  </div>
-
-                  {/* Empty column for alternating layout */}
-                  {isEven && <div className="hidden lg:block" />}
+                  <span className={`text-sm lg:text-base font-medium font-mono ${tone.text}`}>{step.number}</span>
                 </div>
-              )
-            })}
-          </div>
-        </div>
 
-        {/* CTA */}
-        <div className={`text-center mt-16 transition-all duration-700 delay-500 ${visible ? 'opacity-100' : 'opacity-0 translate-y-4'}`}>
-          <Link
-            to="/signup"
-            className="inline-flex items-center gap-2.5 px-8 py-4 bg-gold-500 hover:bg-gold-400 text-spirit-900 font-medium rounded-2xl text-base transition-all duration-200 active:scale-95 shadow-lg shadow-gold-500/20 hover:shadow-gold-400/30"
-          >
-            Start for free
-            <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth={1.8}>
-              <path d="M3 8h10M9 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+                {/* Step card */}
+                <div className={`col-start-2 row-start-1 min-w-0 ${onLeft ? 'lg:col-start-1' : 'lg:col-start-3'}`}>
+                  <div className={`lp-card p-5 sm:p-6 ${onLeft ? 'lg:text-right' : ''}`}>
+                    <div className={`w-10 h-10 rounded-xl border flex items-center justify-center mb-4 ${tone.chip} ${onLeft ? 'lg:ml-auto' : ''}`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-xl font-medium tracking-tight text-lp-fg mb-2">{step.title}</h3>
+                    <p className="text-lp-fg/70 text-sm leading-relaxed">{step.description}</p>
+                  </div>
+                </div>
+              </li>
+            )
+          })}
+        </ol>
+
+        <div className={`text-center mt-16 ${revealClass(visible)}`} style={revealDelay(5)}>
+          <Link to={cta.to} className="lp-btn-primary group px-8 py-4 text-base rounded-2xl">
+            {cta.label}
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
           </Link>
-          <p className="text-spirit-600 text-xs mt-3">No credit card · No trial cutoff · Start in 30 seconds</p>
+          {!cta.isAuthenticated && (
+            <p className="text-lp-fg/60 text-xs mt-3">No credit card · No trial cutoff · Start in 30 seconds</p>
+          )}
         </div>
       </div>
     </section>
