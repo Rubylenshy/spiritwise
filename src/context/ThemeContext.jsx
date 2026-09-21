@@ -7,8 +7,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
  * script in index.html applies the same class before first paint, so keep the
  * storage key and default in sync with it.
  *
- * Scope: only the landing page uses `dark:` variants and renders the toggle;
- * app pages (RootLayout tree) are dark-only until they migrate to the tokens.
+ * The `spirit` / `accent` color scales are CSS variables that flip with this
+ * class (see index.css), so most components theme without `dark:` variants.
+ * The toggle lives in the landing nav, the app Navbar and the auth pages.
  */
 
 const STORAGE_KEY = 'spiritwise-theme'

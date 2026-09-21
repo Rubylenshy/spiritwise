@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { AudioWaveform, Check, Loader2, Sparkles } from 'lucide-react'
+import VideoBackground from '../../components/VideoBackground'
+import ThemeToggle from '../../components/ThemeToggle'
 import api from '../../lib/axios'
 import useAuthStore from '../../store/authStore'
 
@@ -79,13 +82,16 @@ export default function SignUpPage() {
     ) : null
 
   return (
-    <div className="min-h-screen bg-spirit-900 flex items-center justify-center p-6">
+    <div className="isolate relative min-h-screen flex items-center justify-center p-6">
+      <VideoBackground />
+      <ThemeToggle className="absolute top-4 right-4 z-10" />
+
       <div className="w-full max-w-md animate-slide-up">
         {/* Logo */}
-        <div className="flex items-center gap-2 justify-center mb-10">
-          <span className="text-2xl font-display text-gold-400 italic">✦</span>
-          <span className="font-display text-xl text-spirit-100">SpiritWise</span>
-        </div>
+        <Link to="/" className="focus-ring flex items-center gap-2 justify-center mb-10 rounded-lg">
+          <AudioWaveform className="w-6 h-6 text-accent-400" />
+          <span className="text-lg font-semibold tracking-tight text-spirit-100">SpiritWise</span>
+        </Link>
 
         {/* Step indicator */}
         <div className="flex items-center justify-center gap-2 mb-8">
@@ -94,16 +100,16 @@ export default function SignUpPage() {
               <div
                 className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium transition-all ${
                   i < step
-                    ? 'bg-gold-500 text-spirit-900'
+                    ? 'bg-accent-500 text-white'
                     : i === step
-                    ? 'bg-spirit-700 border border-gold-500 text-gold-400'
-                    : 'bg-spirit-800 border border-spirit-600 text-spirit-500'
+                    ? 'glass !border-blue-500 text-accent-400'
+                    : 'glass text-spirit-500'
                 }`}
               >
-                {i < step ? '✓' : i + 1}
+                {i < step ? <Check className="w-4 h-4" /> : i + 1}
               </div>
               {i < STEPS.length - 1 && (
-                <div className={`w-8 h-px ${i < step ? 'bg-gold-500' : 'bg-spirit-700'}`} />
+                <div className={`w-8 h-px ${i < step ? 'bg-accent-500' : 'bg-black/10 dark:bg-white/10'}`} />
               )}
             </div>
           ))}
@@ -113,7 +119,7 @@ export default function SignUpPage() {
           {step === 0 && (
             <div className="space-y-5">
               <div>
-                <h2 className="font-display text-2xl text-spirit-100 italic">Create account</h2>
+                <h2 className="font-display text-2xl text-spirit-100">Create account</h2>
                 <p className="text-spirit-400 text-sm mt-1">Start your daily scripture journey</p>
               </div>
 
@@ -148,7 +154,7 @@ export default function SignUpPage() {
           {step === 1 && (
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <h2 className="font-display text-2xl text-spirit-100 italic">About you</h2>
+                <h2 className="font-display text-2xl text-spirit-100">About you</h2>
                 <p className="text-spirit-400 text-sm mt-1">Optional — helps personalise your experience</p>
               </div>
 
@@ -168,10 +174,7 @@ export default function SignUpPage() {
                 <button type="submit" disabled={loading} className="btn-primary flex-1 flex items-center justify-center gap-2">
                   {loading ? (
                     <>
-                      <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
-                      </svg>
+                      <Loader2 className="w-4 h-4 animate-spin" />
                       Creating…
                     </>
                   ) : 'Create account'}
@@ -182,8 +185,8 @@ export default function SignUpPage() {
 
           {step === 2 && (
             <div className="text-center py-6 space-y-4">
-              <div className="text-5xl animate-pulse-slow">✦</div>
-              <h2 className="font-display text-2xl text-gold-400 italic">Welcome aboard!</h2>
+              <Sparkles className="w-12 h-12 mx-auto text-accent-400 animate-pulse-slow" />
+              <h2 className="font-display text-2xl text-accent-400">Welcome aboard!</h2>
               <p className="text-spirit-400 text-sm">Redirecting to your dashboard…</p>
             </div>
           )}
@@ -192,7 +195,7 @@ export default function SignUpPage() {
         {step < 2 && (
           <p className="text-center text-sm text-spirit-400 mt-6">
             Already have an account?{' '}
-            <Link to="/login" className="text-gold-400 hover:text-gold-300 transition-colors">
+            <Link to="/login" className="text-accent-400 hover:text-accent-300 transition-colors">
               Sign in
             </Link>
           </p>

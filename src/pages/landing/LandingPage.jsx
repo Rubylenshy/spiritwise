@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 
-import VideoBackground from './components/VideoBackground'
+import VideoBackground from '../../components/VideoBackground'
 import LandingNav from './components/LandingNav'
 import HeroSection from './components/HeroSection'
 import FeaturesSection from './components/FeaturesSection'

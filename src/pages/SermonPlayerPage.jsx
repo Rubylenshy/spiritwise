@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { AudioWaveform, Check } from 'lucide-react'
 import { useParams, Link } from 'react-router-dom'
 import { useSermon, useSubmitAnswer } from '../hooks/useSermons'
 import { useAudio } from '../context/AudioContext'
@@ -34,7 +35,7 @@ function ReflectionQuestion({ question, sermonId, index }) {
   return (
     <div className="space-y-3">
       <div className="flex gap-3">
-        <span className="font-display text-gold-500 text-lg leading-none shrink-0 mt-0.5">{index + 1}.</span>
+        <span className="font-display text-accent-500 text-lg leading-none shrink-0 mt-0.5">{index + 1}.</span>
         <p className="text-spirit-300 text-sm leading-relaxed">{question.text}</p>
       </div>
       {!submitted ? (
@@ -58,7 +59,7 @@ function ReflectionQuestion({ question, sermonId, index }) {
       ) : (
         <div className="ml-6 bg-spirit-800/50 border border-spirit-700 rounded-xl px-4 py-3">
           <p className="text-spirit-300 text-sm">{answer}</p>
-          <p className="text-gold-500 text-xs mt-2">✦ Saved</p>
+          <p className="text-accent-500 text-xs mt-2 flex items-center gap-1"><Check className="w-4 h-4" /> Saved</p>
         </div>
       )}
       <XPToast xp={10} show={xpToast} />
@@ -76,7 +77,7 @@ function NextSermonCard({ nextSermon }) {
       <div className="w-10 h-10 rounded-xl bg-spirit-700 border border-spirit-600 flex items-center justify-center shrink-0 overflow-hidden">
         {nextSermon.thumbnail
           ? <img src={nextSermon.thumbnail} alt="" className="w-full h-full object-cover" />
-          : <span className="text-gold-400 font-display text-sm italic">✦</span>
+          : <AudioWaveform className="w-5 h-5 text-accent-400" />
         }
       </div>
       <div className="flex-1 min-w-0">
@@ -179,20 +180,20 @@ export default function SermonPlayerPage() {
         <div className="w-24 h-24 rounded-2xl bg-spirit-700 border border-spirit-600 flex items-center justify-center mx-auto overflow-hidden">
           {sermon.thumbnail
             ? <img src={sermon.thumbnail} alt="" className="w-full h-full object-cover" />
-            : <span className="font-display text-4xl text-gold-400 italic">✦</span>
+            : <AudioWaveform className="w-12 h-12 text-accent-400" />
           }
         </div>
 
         {/* Info */}
         <div className="text-center">
-          <h2 className="font-display text-2xl text-spirit-100 italic">{sermon.title}</h2>
+          <h2 className="font-display text-2xl text-spirit-100">{sermon.title}</h2>
           <p className="text-spirit-400 text-sm mt-1">{sermon.speaker}</p>
           <p className="text-spirit-500 text-xs mt-0.5">
             {sermon.series?.title}
             {sermon.sermon_date && ` · ${new Date(sermon.sermon_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`}
           </p>
           {sermon.scripture_reference && (
-            <p className="text-gold-500/70 text-xs mt-1 italic">{sermon.scripture_reference}</p>
+            <p className="text-accent-500/70 text-xs mt-1 italic">{sermon.scripture_reference}</p>
           )}
         </div>
 
@@ -209,10 +210,10 @@ export default function SermonPlayerPage() {
             onClick={handleSeekClick}
           >
             <div
-              className="h-full bg-gold-500 rounded-full transition-all duration-100 relative"
+              className="h-full bg-accent-500 rounded-full transition-all duration-100 relative"
               style={{ width: `${effectiveProgress * 100}%` }}
             >
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-gold-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-accent-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </div>
           <div className="flex justify-between text-xs font-mono text-spirit-500">
@@ -240,20 +241,20 @@ export default function SermonPlayerPage() {
               }
             }}
             disabled={!sermon.audio_signed_url || audioLoading}
-            className="w-14 h-14 rounded-full bg-gold-500 hover:bg-gold-400 flex items-center justify-center transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-gold-500/20"
+            className="w-14 h-14 rounded-full bg-accent-500 hover:bg-accent-400 flex items-center justify-center transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-accent-500/20"
           >
             {audioLoading && isThisSermon ? (
-              <svg className="w-6 h-6 animate-spin text-spirit-900" viewBox="0 0 24 24" fill="none">
+              <svg className="w-6 h-6 animate-spin text-white" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"/>
               </svg>
             ) : playing && isThisSermon ? (
-              <svg viewBox="0 0 24 24" className="w-6 h-6 text-spirit-900" fill="currentColor">
+              <svg viewBox="0 0 24 24" className="w-6 h-6 text-white" fill="currentColor">
                 <rect x="6" y="4" width="4" height="16" rx="1" />
                 <rect x="14" y="4" width="4" height="16" rx="1" />
               </svg>
             ) : (
-              <svg viewBox="0 0 24 24" className="w-6 h-6 text-spirit-900 ml-0.5" fill="currentColor">
+              <svg viewBox="0 0 24 24" className="w-6 h-6 text-white ml-0.5" fill="currentColor">
                 <polygon points="5 3 19 12 5 21 5 3" />
               </svg>
             )}
@@ -278,7 +279,7 @@ export default function SermonPlayerPage() {
           <input
             type="range" min={0} max={1} step={0.05} value={volume}
             onChange={(e) => changeVolume(parseFloat(e.target.value))}
-            className="flex-1 accent-gold-500 h-1 cursor-pointer"
+            className="flex-1 accent-accent-500 h-1 cursor-pointer"
           />
         </div>
       </div>
@@ -309,7 +310,7 @@ export default function SermonPlayerPage() {
 
       {/* Reflection questions */}
       {showQuestions && sermon.questions?.length > 0 && (
-        <div className="card p-6 border-l-2 border-l-gold-500 rounded-r-2xl rounded-l-none animate-slide-up space-y-5">
+        <div className="card p-6 border-l-2 border-l-accent-500 rounded-r-2xl rounded-l-none animate-slide-up space-y-5">
           <div>
             <p className="label mb-1">Reflection questions</p>
             <p className="text-spirit-500 text-xs">Each answer earns +10 XP</p>

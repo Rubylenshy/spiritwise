@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import api from '../lib/axios'
 import { ADMIN_URL } from '../lib/config'
@@ -52,15 +53,15 @@ function BulkCsvImport() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start gap-3 bg-gold-500/8 border border-gold-500/20 rounded-2xl px-5 py-4">
-        <span className="text-gold-400 text-lg shrink-0 mt-0.5">✦</span>
+      <div className="flex items-start gap-3 bg-accent-500/[0.08] border border-accent-500/20 rounded-2xl px-5 py-4">
+        <Sparkles className="w-5 h-5 text-accent-400 shrink-0 mt-0.5" />
         <div className="space-y-1">
-          <p className="text-gold-400 font-medium text-sm">Bulk metadata import from CSV</p>
+          <p className="text-accent-400 font-medium text-sm">Bulk metadata import from CSV</p>
           <p className="text-spirit-400 text-xs leading-relaxed">
             Create sermon records or update existing ones (match by <span className="font-mono text-spirit-300">id</span> or <span className="font-mono text-spirit-300">slug</span>) in one pass.
             This edits metadata only — audio still needs to be uploaded separately, or reference an already-hosted file via <span className="font-mono text-spirit-300">audio_url</span>.
           </p>
-          <button type="button" onClick={downloadCsvTemplate} className="text-gold-400 hover:underline text-xs mt-1">
+          <button type="button" onClick={downloadCsvTemplate} className="text-accent-400 hover:underline text-xs mt-1">
             Download CSV template →
           </button>
         </div>
@@ -90,7 +91,7 @@ function BulkCsvImport() {
         <div className="space-y-4 animate-slide-up">
           <div className="card p-5 grid grid-cols-3 gap-3 text-center">
             <div>
-              <p className="text-2xl font-display text-gold-400">{result.created}</p>
+              <p className="text-2xl font-display text-accent-400">{result.created}</p>
               <p className="text-spirit-500 text-xs">Created</p>
             </div>
             <div>
@@ -115,7 +116,7 @@ function BulkCsvImport() {
                 ) : (
                   <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
                     <span className="text-spirit-200 truncate">{r.title}</span>
-                    <span className={`text-xs shrink-0 ${r.status === 'created' ? 'text-gold-400' : 'text-spirit-400'}`}>{r.status}</span>
+                    <span className={`text-xs shrink-0 ${r.status === 'created' ? 'text-accent-400' : 'text-spirit-400'}`}>{r.status}</span>
                   </div>
                 )}
               </div>
@@ -147,7 +148,7 @@ function FormatGuide() {
         className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-spirit-700/30 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <span className="text-gold-400 text-sm font-medium">Recommended: AAC (.m4a) at 96kbps</span>
+          <span className="text-accent-400 text-sm font-medium">Recommended: AAC (.m4a) at 96kbps</span>
           <span className="text-xs text-spirit-500">saves ~25% vs MP3, plays everywhere</span>
         </div>
         <svg viewBox="0 0 16 16" fill="none" className={`w-4 h-4 text-spirit-500 transition-transform ${open ? 'rotate-180' : ''}`} stroke="currentColor" strokeWidth={1.5}>
@@ -159,10 +160,10 @@ function FormatGuide() {
           <p className="label mb-3">Format comparison for a 45-minute sermon</p>
           <div className="space-y-2">
             {FORMAT_GUIDE.map(f => (
-              <div key={f.ext} className={`flex items-center gap-3 p-3 rounded-xl ${f.recommended ? 'bg-gold-500/10 border border-gold-500/20' : 'bg-spirit-800'}`}>
+              <div key={f.ext} className={`flex items-center gap-3 p-3 rounded-xl ${f.recommended ? 'bg-accent-500/10 border border-accent-500/20' : 'bg-spirit-800'}`}>
                 <div className="w-28 shrink-0">
-                  <p className={`text-sm font-medium ${f.recommended ? 'text-gold-400' : 'text-spirit-200'}`}>{f.ext}</p>
-                  {f.recommended && <span className="text-xs text-gold-500/70">recommended</span>}
+                  <p className={`text-sm font-medium ${f.recommended ? 'text-accent-400' : 'text-spirit-200'}`}>{f.ext}</p>
+                  {f.recommended && <span className="text-xs text-accent-500/70">recommended</span>}
                 </div>
                 <div className="flex-1 grid grid-cols-3 gap-2 text-xs text-spirit-400">
                   <span>{f.size}</span>
@@ -288,7 +289,7 @@ function UploadForm({ onSuccess }) {
         onClick={() => fileRef.current?.click()}
         className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
           file
-            ? 'border-gold-500/50 bg-gold-500/5'
+            ? 'border-accent-500/50 bg-accent-500/5'
             : errors.file
             ? 'border-flame-500/50 bg-flame-500/5'
             : 'border-spirit-600 hover:border-spirit-500 hover:bg-spirit-800/50'
@@ -303,7 +304,7 @@ function UploadForm({ onSuccess }) {
         />
         {file ? (
           <div className="space-y-1">
-            <p className="text-gold-400 font-medium">{file.name}</p>
+            <p className="text-accent-400 font-medium">{file.name}</p>
             <p className="text-spirit-400 text-sm">{fileSizeMB} MB · {file.type || 'audio file'}</p>
             <p className="text-spirit-500 text-xs mt-2">Click to change file</p>
           </div>
@@ -379,7 +380,7 @@ function UploadForm({ onSuccess }) {
           </div>
           <div className="h-2 bg-spirit-700 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gold-500 rounded-full transition-all duration-300"
+              className="h-full bg-accent-500 rounded-full transition-all duration-300"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -406,9 +407,9 @@ function UploadForm({ onSuccess }) {
 function SuccessCard({ result, onUploadAnother }) {
   return (
     <div className="space-y-5 animate-slide-up">
-      <div className="card p-6 border-l-2 border-l-gold-500 rounded-r-2xl rounded-l-none text-center space-y-3">
-        <div className="text-4xl">✦</div>
-        <h3 className="font-display text-2xl text-gold-400 italic">Upload complete</h3>
+      <div className="card p-6 border-l-2 border-l-accent-500 rounded-r-2xl rounded-l-none text-center space-y-3">
+        <CheckCircle2 className="w-10 h-10 mx-auto text-accent-400" />
+        <h3 className="font-display text-2xl text-accent-400">Upload complete</h3>
         <p className="text-spirit-400 text-sm">
           <span className="text-spirit-200 font-medium">{result.sermon_title}</span> has been uploaded to R2 and is ready to review.
         </p>
@@ -418,15 +419,15 @@ function SuccessCard({ result, onUploadAnother }) {
         <p className="label">Next steps</p>
         <div className="space-y-2 text-sm text-spirit-300">
           <div className="flex items-start gap-2">
-            <span className="text-gold-500 shrink-0 mt-0.5">1.</span>
-            <span>Open <a href={`${ADMIN_URL}/sermons/sermon/`} target="_blank" rel="noreferrer" className="text-gold-400 hover:underline">Django admin → Sermons</a> and find <span className="text-spirit-200">{result.sermon_title}</span></span>
+            <span className="text-accent-500 shrink-0 mt-0.5">1.</span>
+            <span>Open <a href={`${ADMIN_URL}/sermons/sermon/`} target="_blank" rel="noreferrer" className="text-accent-400 hover:underline">Django admin → Sermons</a> and find <span className="text-spirit-200">{result.sermon_title}</span></span>
           </div>
           <div className="flex items-start gap-2">
-            <span className="text-gold-500 shrink-0 mt-0.5">2.</span>
+            <span className="text-accent-500 shrink-0 mt-0.5">2.</span>
             <span>Add reflection questions, verify the speaker and series, set the sermon date</span>
           </div>
           <div className="flex items-start gap-2">
-            <span className="text-gold-500 shrink-0 mt-0.5">3.</span>
+            <span className="text-accent-500 shrink-0 mt-0.5">3.</span>
             <span>Check <span className="font-mono text-spirit-300 text-xs">Is published</span> → Save — it will appear in the library immediately</span>
           </div>
         </div>
@@ -454,13 +455,13 @@ export default function CloudImportPage() {
       <div className="flex gap-2 p-1 bg-spirit-800 rounded-2xl">
         <button
           onClick={() => setMode('single')}
-          className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${mode === 'single' ? 'bg-spirit-700 text-gold-400' : 'text-spirit-400 hover:text-spirit-200'}`}
+          className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${mode === 'single' ? 'bg-spirit-700 text-accent-400' : 'text-spirit-400 hover:text-spirit-200'}`}
         >
           Upload one sermon
         </button>
         <button
           onClick={() => setMode('bulk')}
-          className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${mode === 'bulk' ? 'bg-spirit-700 text-gold-400' : 'text-spirit-400 hover:text-spirit-200'}`}
+          className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${mode === 'bulk' ? 'bg-spirit-700 text-accent-400' : 'text-spirit-400 hover:text-spirit-200'}`}
         >
           Bulk CSV import
         </button>
@@ -469,10 +470,10 @@ export default function CloudImportPage() {
       {mode === 'single' ? (
         <>
           {/* Admin notice */}
-          <div className="flex items-start gap-3 bg-gold-500/8 border border-gold-500/20 rounded-2xl px-5 py-4">
-            <span className="text-gold-400 text-lg shrink-0 mt-0.5">✦</span>
+          <div className="flex items-start gap-3 bg-accent-500/[0.08] border border-accent-500/20 rounded-2xl px-5 py-4">
+            <ShieldCheck className="w-5 h-5 text-accent-400 shrink-0 mt-0.5" />
             <div>
-              <p className="text-gold-400 font-medium text-sm">Admin only — uploads directly to Cloudflare R2</p>
+              <p className="text-accent-400 font-medium text-sm">Admin only — uploads directly to Cloudflare R2</p>
               <p className="text-spirit-400 text-xs mt-0.5 leading-relaxed">
                 Files are stored securely in R2 and streamed through Django&apos;s authenticated proxy. The raw URL is never exposed to users.
               </p>

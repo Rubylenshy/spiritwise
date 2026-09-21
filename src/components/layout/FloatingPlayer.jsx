@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
+import { AudioWaveform, Loader2, Maximize2, Pause, Play, RotateCcw, RotateCw } from 'lucide-react'
 import { useAudio } from '../../context/AudioContext'
 
 function formatTime(seconds) {
@@ -14,7 +15,7 @@ function Waveform({ playing }) {
       {[3, 5, 8, 5, 3, 6, 4].map((h, i) => (
         <div
           key={i}
-          className={`w-0.5 rounded-full bg-gold-400 transition-all ${
+          className={`w-0.5 rounded-full bg-accent-400 transition-all ${
             playing ? 'animate-pulse-slow' : 'opacity-40'
           }`}
           style={{
@@ -49,14 +50,11 @@ export default function FloatingPlayer() {
   const hasSermon = !!currentSermon
 
   return (
-    <div className={`
-      fixed bottom-0 inset-x-0 z-40
-      lg:bottom-0 lg:left-64
-      mb-0 lg:mb-0
-    `}>
+    // Mobile: sits on top of the BottomNav (h-14 + safe area); desktop: flush, right of the sidebar
+    <div className="fixed inset-x-0 z-40 bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-0 lg:left-64">
       {/* Progress bar — sits above the bar */}
       <div
-        className="h-0.5 bg-spirit-700 cursor-pointer"
+        className="h-1 bg-spirit-100/10 cursor-pointer"
         onClick={(e) => {
           if (!hasSermon) return
           const rect = e.currentTarget.getBoundingClientRect()
@@ -64,20 +62,20 @@ export default function FloatingPlayer() {
         }}
       >
         <div
-          className="h-full bg-gold-500 transition-all duration-100"
+          className="h-full bg-accent-500 transition-all duration-100"
           style={{ width: `${progress * 100}%` }}
         />
       </div>
 
       {/* Main bar */}
-      <div className="bg-spirit-900 border-t border-spirit-700 px-4 py-2 flex items-center gap-3">
+      <div className="glass-chrome border-t border-black/5 dark:border-white/5 px-4 py-2 flex items-center gap-3">
 
         {/* Thumbnail */}
-        <div className="w-10 h-10 rounded-lg bg-spirit-800 border border-spirit-700 flex items-center justify-center shrink-0 overflow-hidden">
+        <div className="w-10 h-10 rounded-lg glass flex items-center justify-center shrink-0 overflow-hidden">
           {currentSermon?.thumbnail ? (
             <img src={currentSermon.thumbnail} alt="" className="w-full h-full object-cover" />
           ) : (
-            <span className="font-display text-gold-400 text-sm italic">✦</span>
+            <AudioWaveform className="w-5 h-5 text-accent-400" />
           )}
         </div>
 
@@ -85,7 +83,7 @@ export default function FloatingPlayer() {
         <div className="flex-1 min-w-0">
           {hasSermon ? (
             <Link to={`/sermons/${currentSermon.id}`} className="block">
-              <p className="text-spirit-100 text-sm font-medium truncate leading-tight hover:text-gold-400 transition-colors">
+              <p className="text-spirit-100 text-sm font-medium truncate leading-tight hover:text-accent-400 transition-colors">
                 {currentSermon.title}
               </p>
               <p className="text-spirit-500 text-xs truncate">
@@ -118,53 +116,40 @@ export default function FloatingPlayer() {
 
         {/* Controls */}
         <div className="flex items-center gap-1 shrink-0">
-          {/* Skip back */}
           <button
+            type="button"
             onClick={() => skip(-15)}
             disabled={!hasSermon}
-            className="w-8 h-8 flex items-center justify-center text-spirit-400 hover:text-spirit-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            aria-label="Back 15 seconds"
+            className="focus-ring rounded-lg w-8 h-8 flex items-center justify-center text-spirit-400 hover:text-spirit-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
-            <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth={1.8}>
-              <path d="M12.5 4C7.81 4 4 7.81 4 12.5S7.81 21 12.5 21 21 17.19 21 12.5" strokeLinecap="round"/>
-              <path d="M12.5 4L10 1.5M12.5 4L10 6.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <text x="8.5" y="14.5" fontSize="5.5" fill="currentColor" stroke="none" fontFamily="sans-serif">15</text>
-            </svg>
+            <RotateCcw className="w-4 h-4" />
           </button>
 
-          {/* Play / Pause */}
           <button
+            type="button"
             onClick={togglePlay}
             disabled={!hasSermon || loading}
-            className="w-10 h-10 rounded-full bg-gold-500 hover:bg-gold-400 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-all active:scale-95"
+            aria-label={playing ? 'Pause' : 'Play'}
+            className="focus-ring w-10 h-10 rounded-full flex items-center justify-center bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 hover:scale-105 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 transition-transform active:scale-95"
           >
             {loading ? (
-              <svg className="w-4 h-4 animate-spin text-spirit-900" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"/>
-              </svg>
+              <Loader2 className="w-4 h-4 animate-spin" />
             ) : playing ? (
-              <svg viewBox="0 0 24 24" className="w-4 h-4 text-spirit-900" fill="currentColor">
-                <rect x="6" y="4" width="4" height="16" rx="1"/>
-                <rect x="14" y="4" width="4" height="16" rx="1"/>
-              </svg>
+              <Pause className="w-4 h-4" />
             ) : (
-              <svg viewBox="0 0 24 24" className="w-4 h-4 text-spirit-900 ml-0.5" fill="currentColor">
-                <polygon points="5 3 19 12 5 21 5 3"/>
-              </svg>
+              <Play className="w-4 h-4 ml-0.5" />
             )}
           </button>
 
-          {/* Skip forward */}
           <button
+            type="button"
             onClick={() => skip(15)}
             disabled={!hasSermon}
-            className="w-8 h-8 flex items-center justify-center text-spirit-400 hover:text-spirit-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            aria-label="Forward 15 seconds"
+            className="focus-ring rounded-lg w-8 h-8 flex items-center justify-center text-spirit-400 hover:text-spirit-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
-            <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth={1.8}>
-              <path d="M11.5 4C16.19 4 20 7.81 20 12.5S16.19 21 11.5 21 3 17.19 3 12.5" strokeLinecap="round"/>
-              <path d="M11.5 4L14 1.5M11.5 4L14 6.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <text x="7.5" y="14.5" fontSize="5.5" fill="currentColor" stroke="none" fontFamily="sans-serif">15</text>
-            </svg>
+            <RotateCw className="w-4 h-4" />
           </button>
         </div>
 
@@ -172,12 +157,10 @@ export default function FloatingPlayer() {
         {hasSermon && (
           <Link
             to={`/sermons/${currentSermon.id}`}
-            className="hidden sm:flex w-8 h-8 items-center justify-center text-spirit-500 hover:text-gold-400 transition-colors shrink-0"
+            className="focus-ring rounded-lg hidden sm:flex w-8 h-8 items-center justify-center text-spirit-500 hover:text-accent-400 transition-colors shrink-0"
             title="Open full player"
           >
-            <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth={1.8}>
-              <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+            <Maximize2 className="w-4 h-4" />
           </Link>
         )}
       </div>

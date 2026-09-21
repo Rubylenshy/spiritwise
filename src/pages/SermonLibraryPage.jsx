@@ -9,8 +9,8 @@ function SermonRow({ sermon }) {
 
   return (
     <Link to={`/sermons/${sermon.id}`} className="card-hover px-5 py-4 flex items-center gap-4 group">
-      <div className="w-10 h-10 rounded-full bg-spirit-700 border border-spirit-600 flex items-center justify-center shrink-0 group-hover:bg-gold-500 group-hover:border-gold-400 transition-all duration-200">
-        <svg viewBox="0 0 24 24" className="w-4 h-4 group-hover:text-spirit-900 text-gold-400 transition-colors" fill="currentColor">
+      <div className="w-10 h-10 rounded-full bg-spirit-700 border border-spirit-600 flex items-center justify-center shrink-0 group-hover:bg-accent-500 group-hover:border-accent-400 transition-all duration-200">
+        <svg viewBox="0 0 24 24" className="w-4 h-4 group-hover:text-white text-accent-400 transition-colors" fill="currentColor">
           <polygon points="5 3 19 12 5 21 5 3" />
         </svg>
       </div>
@@ -118,7 +118,7 @@ export default function SermonLibraryPage() {
             onClick={() => handleTag(null)}
             className={`text-xs px-3 py-1.5 rounded-full border transition-all duration-150 ${
               !activeTag
-                ? 'bg-gold-500 border-gold-400 text-spirit-900 font-medium'
+                ? 'bg-accent-500 border-accent-400 text-white font-medium'
                 : 'border-spirit-600 text-spirit-400 hover:border-spirit-500 hover:text-spirit-200'
             }`}
           >

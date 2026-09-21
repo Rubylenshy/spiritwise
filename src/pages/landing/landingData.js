@@ -1,16 +1,10 @@
 /**
  * Static media + demo content for the landing page.
- * Asset URLs come from the landing design template.
- *
- * Video: Midjourney's CDN sends a same-origin resource policy, so browsers
- * refuse to play the hotlinked URL. Save the file to
- * public/videos/landing-bg.mp4 — VideoBackground tries that first and only
- * falls back to the CDN URL.
+ * Asset URLs come from the landing design template (the background video
+ * lives in src/components/VideoBackground.jsx).
  */
 
 export const MEDIA = {
-  video: '/videos/landing-bg.mp4',
-  videoFallback: 'https://cdn.midjourney.com/video/4b8627e3-f2e2-44a5-aa3c-557cf281e638/1.mp4',
   heroArt: 'https://images.unsplash.com/photo-1710319586590-89a5652c4c94?w=800&q=80',
   art2: 'https://images.unsplash.com/photo-1625014618427-fbc980b974f5?w=320&q=80',
   art3: 'https://images.unsplash.com/photo-1650473395434-8674d953ef2f?w=320&q=80',

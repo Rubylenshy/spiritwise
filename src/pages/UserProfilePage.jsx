@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Check } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 import api from '../lib/axios'
 import { Spinner, PageLoader } from '../components/ui'
@@ -26,7 +27,7 @@ function BadgeShelf({ badges, recentBadges }) {
       <div className="flex items-center justify-between mb-4">
         <p className="label">Badges earned — {allBadges.length}</p>
         {allBadges.length > 6 && (
-          <button onClick={() => setShowAll(v => !v)} className="text-gold-400 text-xs hover:text-gold-300 transition-colors">
+          <button onClick={() => setShowAll(v => !v)} className="text-accent-400 text-xs hover:text-accent-300 transition-colors">
             {showAll ? 'Show less' : `Show all ${allBadges.length}`}
           </button>
         )}
@@ -39,12 +40,12 @@ function BadgeShelf({ badges, recentBadges }) {
               key={ub.id}
               className={`relative flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all ${
                 isNew
-                  ? 'bg-gold-500/10 border-gold-500/30'
+                  ? 'bg-accent-500/10 border-accent-500/30'
                   : 'bg-spirit-800 border-spirit-700'
               }`}
             >
               {isNew && (
-                <span className="absolute -top-1.5 -right-1.5 text-xs bg-gold-500 text-spirit-900 font-medium px-1.5 py-0.5 rounded-full">
+                <span className="absolute -top-1.5 -right-1.5 text-xs bg-accent-500 text-white font-medium px-1.5 py-0.5 rounded-full">
                   new
                 </span>
               )}
@@ -163,9 +164,9 @@ function SettingsForm({ user, onSaved }) {
               type="range" id="daily_goal_minutes" name="daily_goal_minutes"
               min={5} max={120} step={5}
               value={form.daily_goal_minutes} onChange={handleChange}
-              className="flex-1 accent-gold-500"
+              className="flex-1 accent-accent-500"
             />
-            <span className="text-gold-400 font-mono text-sm w-12 text-right">{form.daily_goal_minutes} min</span>
+            <span className="text-accent-400 font-mono text-sm w-12 text-right">{form.daily_goal_minutes} min</span>
           </div>
         </div>
 
@@ -182,7 +183,7 @@ function SettingsForm({ user, onSaved }) {
               onChange={handleChange}
               className="sr-only peer"
             />
-            <div className="w-10 h-6 bg-spirit-700 peer-focus:outline-none rounded-full peer peer-checked:bg-gold-500 transition-all after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4"></div>
+            <div className="w-10 h-6 bg-spirit-700 peer-focus:outline-none rounded-full peer peer-checked:bg-accent-500 transition-all after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4"></div>
           </label>
         </div>
 
@@ -195,7 +196,7 @@ function SettingsForm({ user, onSaved }) {
             {saving && <Spinner className="w-4 h-4" />}
             Save changes
           </button>
-          {saved && <span className="text-gold-400 text-sm animate-fade-in">✦ Saved</span>}
+          {saved && <span className="text-accent-400 text-sm animate-fade-in flex items-center gap-1"><Check className="w-4 h-4" /> Saved</span>}
         </div>
       </form>
     </div>
@@ -243,18 +244,18 @@ export default function UserProfilePage() {
           <div className="w-16 h-16 rounded-full bg-spirit-600 border-2 border-spirit-500 flex items-center justify-center overflow-hidden">
             {user?.avatar
               ? <img src={user.avatar} alt="avatar" className="w-full h-full object-cover" />
-              : <span className="font-display text-2xl text-gold-400">{initials}</span>
+              : <span className="font-display text-2xl text-accent-400">{initials}</span>
             }
           </div>
-          <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-gold-500 flex items-center justify-center cursor-pointer hover:bg-gold-400 transition-colors">
+          <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-accent-500 flex items-center justify-center cursor-pointer hover:bg-accent-400 transition-colors">
             <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarChange} />
-            <svg viewBox="0 0 24 24" fill="none" className="w-3 h-3 text-spirit-900" stroke="currentColor" strokeWidth={2.5}>
+            <svg viewBox="0 0 24 24" fill="none" className="w-3 h-3 text-white" stroke="currentColor" strokeWidth={2.5}>
               <path d="M12 4v16m8-8H4" strokeLinecap="round"/>
             </svg>
           </label>
           {avatarUploading && (
             <div className="absolute inset-0 rounded-full bg-spirit-900/60 flex items-center justify-center">
-              <svg className="w-5 h-5 animate-spin text-gold-400" viewBox="0 0 24 24" fill="none">
+              <svg className="w-5 h-5 animate-spin text-accent-400" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"/>
               </svg>
@@ -262,7 +263,7 @@ export default function UserProfilePage() {
           )}
         </div>
         <div className="min-w-0">
-          <p className="font-display text-xl text-spirit-100 italic">{displayName}</p>
+          <p className="font-display text-xl text-spirit-100">{displayName}</p>
           <p className="text-spirit-400 text-sm">{user?.email}</p>
           <p className="text-spirit-500 text-xs mt-0.5">@{user?.username}</p>
           <p className="text-spirit-600 text-xs mt-1">Tap the + to change photo</p>
@@ -277,7 +278,7 @@ export default function UserProfilePage() {
           { label: 'Badges',          value: badges?.length ?? 0 },
         ].map(({ label, value }) => (
           <div key={label} className="card p-4 text-center">
-            <p className="font-display text-2xl text-gold-400">{value}</p>
+            <p className="font-display text-2xl text-accent-400">{value}</p>
             <p className="label mt-1">{label}</p>
           </div>
         ))}
@@ -292,14 +293,14 @@ export default function UserProfilePage() {
 
       {/* Recently earned badges — from stats */}
       {stats?.recent_badges?.length > 0 && (
-        <div className="card p-5 border-l-2 border-l-gold-500 rounded-r-2xl rounded-l-none animate-slide-up">
+        <div className="card p-5 border-l-2 border-l-accent-500 rounded-r-2xl rounded-l-none animate-slide-up">
           <p className="label mb-3">Recently earned</p>
           <div className="flex gap-3 flex-wrap">
             {stats.recent_badges.map((b) => (
-              <div key={b.name} className="flex items-center gap-2 bg-gold-500/10 border border-gold-500/20 rounded-xl px-3 py-2">
+              <div key={b.name} className="flex items-center gap-2 bg-accent-500/10 border border-accent-500/20 rounded-xl px-3 py-2">
                 <span className="text-lg">{b.icon}</span>
                 <div>
-                  <p className="text-gold-400 text-xs font-medium">{b.name}</p>
+                  <p className="text-accent-400 text-xs font-medium">{b.name}</p>
                   <p className="text-spirit-500 text-xs">{b.description}</p>
                 </div>
               </div>

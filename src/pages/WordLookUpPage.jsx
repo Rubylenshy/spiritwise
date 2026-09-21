@@ -13,6 +13,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { Sparkles } from 'lucide-react'
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
 import { useMicrophone } from '../hooks/useMicrophone'
 import { extractReferences, highlightTranscript } from '../lib/bibleParser'
@@ -73,7 +74,7 @@ export function BibleVerseCard({
         </div>
         {loading && loadingLabel !== 'Loading verse…' && (
           <div className="flex items-center gap-2 pt-1">
-            <svg className="w-3.5 h-3.5 animate-spin text-gold-400" viewBox="0 0 24 24" fill="none">
+            <svg className="w-3.5 h-3.5 animate-spin text-accent-400" viewBox="0 0 24 24" fill="none">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"/>
             </svg>
@@ -100,7 +101,7 @@ export function BibleVerseCard({
   return (
     <div className={`card p-5 space-y-4 border transition-all duration-200 ${
       isInferred
-        ? 'border-gold-500/25 bg-gold-500/[0.02]'
+        ? 'border-accent-500/25 bg-accent-500/[0.02]'
         : 'border-spirit-700'
     }`}>
 
@@ -112,7 +113,7 @@ export function BibleVerseCard({
           {/* Match type badge */}
           {isInferred ? (
             <div className="flex items-center gap-1">
-              <span className="text-xs px-2 py-0.5 rounded-full bg-gold-500/10 border border-gold-500/25 text-gold-500 shrink-0">
+              <span className="text-xs px-2 py-0.5 rounded-full bg-accent-500/10 border border-accent-500/25 text-accent-500 shrink-0">
                 AI suggested
               </span>
               {/* Confidence bar */}
@@ -121,8 +122,8 @@ export function BibleVerseCard({
                   <div className="w-16 h-1.5 bg-spirit-700 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${
-                        confidence > 0.8 ? 'bg-gold-500' :
-                        confidence > 0.6 ? 'bg-gold-600' : 'bg-spirit-500'
+                        confidence > 0.8 ? 'bg-accent-500' :
+                        confidence > 0.6 ? 'bg-accent-600' : 'bg-spirit-500'
                       }`}
                       style={{ width: `${confidencePct}%` }}
                     />
@@ -177,7 +178,7 @@ export function BibleVerseCard({
       )}
 
       {/* ── Verse text ──────────────────────────────────────────────────────── */}
-      <blockquote className="font-display text-lg text-spirit-200 italic leading-relaxed border-l-2 border-l-gold-500/60 pl-4">
+      <blockquote className="font-display text-lg text-spirit-200 leading-relaxed border-l-2 border-l-accent-500/60 pl-4">
         {verseText || (
           <span className="text-spirit-500 not-italic text-sm font-sans">
             No text returned for this version.
@@ -195,7 +196,7 @@ export function BibleVerseCard({
             className="flex items-center gap-1.5 text-xs text-spirit-400 hover:text-spirit-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors px-2 py-1 rounded-lg hover:bg-spirit-700"
           >
             {copied ? (
-              <><svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5 text-gold-400" stroke="currentColor" strokeWidth={2}><path d="M3 8l4 4 6-7" strokeLinecap="round" strokeLinejoin="round"/></svg><span className="text-gold-400">Copied</span></>
+              <><svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5 text-accent-400" stroke="currentColor" strokeWidth={2}><path d="M3 8l4 4 6-7" strokeLinecap="round" strokeLinejoin="round"/></svg><span className="text-accent-400">Copied</span></>
             ) : (
               <><svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5" stroke="currentColor" strokeWidth={1.6}><rect x="5" y="5" width="8" height="9" rx="1.5"/><path d="M3 10V3.5A1.5 1.5 0 014.5 2H11" strokeLinecap="round"/></svg>Copy</>
             )}
@@ -204,7 +205,7 @@ export function BibleVerseCard({
             href={bibleGatewayUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-xs text-spirit-400 hover:text-gold-400 transition-colors px-2 py-1 rounded-lg hover:bg-spirit-700"
+            className="flex items-center gap-1.5 text-xs text-spirit-400 hover:text-accent-400 transition-colors px-2 py-1 rounded-lg hover:bg-spirit-700"
           >
             <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5" stroke="currentColor" strokeWidth={1.6}><path d="M10 3h3v3M13 3l-6 6M7 4H4a1 1 0 00-1 1v7a1 1 0 001 1h7a1 1 0 001-1V9" strokeLinecap="round" strokeLinejoin="round"/></svg>
             Open in Bible
@@ -270,10 +271,10 @@ function ResultCard({ initial }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MIC_META = {
-  idle:       { label: 'Tap to start listening',  pulse: false, color: 'border-spirit-600 bg-spirit-800 text-spirit-400 hover:border-gold-500/50 hover:text-gold-400 hover:bg-spirit-700' },
-  requesting: { label: 'Requesting microphone…',  pulse: false, color: 'border-gold-500/40 bg-gold-500/5 text-gold-400' },
-  listening:  { label: 'Listening — tap to stop', pulse: true,  color: 'border-flame-500/60 bg-flame-500/8 text-flame-400' },
-  processing: { label: 'Finalising…',             pulse: false, color: 'border-gold-500/60 bg-gold-500/8 text-gold-400' },
+  idle:       { label: 'Tap to start listening',  pulse: false, color: 'border-spirit-600 bg-spirit-800 text-spirit-400 hover:border-accent-500/50 hover:text-accent-400 hover:bg-spirit-700' },
+  requesting: { label: 'Requesting microphone…',  pulse: false, color: 'border-accent-500/40 bg-accent-500/5 text-accent-400' },
+  listening:  { label: 'Listening — tap to stop', pulse: true,  color: 'border-flame-500/60 bg-flame-500/[0.08] text-flame-400' },
+  processing: { label: 'Finalising…',             pulse: false, color: 'border-accent-500/60 bg-accent-500/[0.08] text-accent-400' },
   error:      { label: 'Tap to retry',            pulse: false, color: 'border-flame-500/40 bg-flame-500/5 text-flame-400' },
 }
 
@@ -390,7 +391,7 @@ function HighlightedTranscript({ transcript, interimTranscript, refs, onRefClick
           </svg>
           <span className="text-spirit-500 text-xs uppercase tracking-widest">Transcript</span>
           {refs.length > 0 && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-gold-500/10 border border-gold-500/25 text-gold-500">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-accent-500/10 border border-accent-500/25 text-accent-500">
               {refs.length} reference{refs.length !== 1 ? 's' : ''} detected
             </span>
           )}
@@ -411,14 +412,14 @@ function HighlightedTranscript({ transcript, interimTranscript, refs, onRefClick
         {isEmpty ? (
           <p className="text-spirit-600 italic">
             Start listening — your transcript will appear here. Detected scripture references
-            will be highlighted in gold. Tap any highlight to look it up.
+            will be highlighted in blue. Tap any highlight to look it up.
           </p>
         ) : (
           <p>
             {segments.map((seg, i) =>
               seg.highlighted ? (
                 <button key={i} onClick={() => onRefClick(seg.ref)}
-                  className="text-gold-400 bg-gold-500/15 border border-gold-500/30 px-1.5 py-0.5 rounded font-medium hover:bg-gold-500/25 transition-colors cursor-pointer mx-0.5"
+                  className="text-accent-400 bg-accent-500/15 border border-accent-500/30 px-1.5 py-0.5 rounded font-medium hover:bg-accent-500/25 transition-colors cursor-pointer mx-0.5"
                   title={`Look up: ${seg.ref.query}`}>
                   {seg.text}
                 </button>
@@ -465,17 +466,17 @@ function ResultsPanel({ results, isLoading, isAiLoading }) {
     <div className="space-y-3">
       {/* AI lookup loading indicator */}
       {isAiLoading && (
-        <div className="card p-4 flex items-center gap-3 border-gold-500/20 bg-gold-500/3">
-          <div className="w-8 h-8 rounded-lg bg-gold-500/10 border border-gold-500/20 flex items-center justify-center shrink-0">
-            <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4 text-gold-400" stroke="currentColor" strokeWidth={1.5}>
+        <div className="card p-4 flex items-center gap-3 border-accent-500/20 bg-accent-500/[0.03]">
+          <div className="w-8 h-8 rounded-lg bg-accent-500/10 border border-accent-500/20 flex items-center justify-center shrink-0">
+            <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4 text-accent-400" stroke="currentColor" strokeWidth={1.5}>
               <polygon points="8 1 10 6 15 6 11 10 13 15 8 12 3 15 5 10 1 6 6 6"/>
             </svg>
           </div>
           <div className="flex-1">
-            <p className="text-gold-400 text-xs font-medium">Asking Claude to identify this passage…</p>
+            <p className="text-accent-400 text-xs font-medium">Asking Claude to identify this passage…</p>
             <p className="text-spirit-500 text-xs mt-0.5">Claude identifies references — the Bible API fetches the text</p>
           </div>
-          <svg className="w-4 h-4 animate-spin text-gold-500 shrink-0" viewBox="0 0 24 24" fill="none">
+          <svg className="w-4 h-4 animate-spin text-accent-500 shrink-0" viewBox="0 0 24 24" fill="none">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"/>
           </svg>
@@ -635,7 +636,7 @@ function LookupHistoryPanel({ onSelect }) {
                   {item.reference_found || item.query}
                 </p>
                 {item.match_type === 'inferred' && (
-                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-gold-500/10 border border-gold-500/20 text-gold-500 shrink-0">
+                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-accent-500/10 border border-accent-500/20 text-accent-500 shrink-0">
                     AI
                   </span>
                 )}
@@ -714,8 +715,8 @@ function FileFallback({ onTranscript }) {
   return (
     <div className="card p-5 border-dashed space-y-3">
       <div className="flex items-start gap-3">
-        <div className="w-8 h-8 rounded-lg bg-gold-500/10 border border-gold-500/20 flex items-center justify-center shrink-0 mt-0.5">
-          <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4 text-gold-400" stroke="currentColor" strokeWidth={1.6}>
+        <div className="w-8 h-8 rounded-lg bg-accent-500/10 border border-accent-500/20 flex items-center justify-center shrink-0 mt-0.5">
+          <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4 text-accent-400" stroke="currentColor" strokeWidth={1.6}>
             <path d="M8 2v8M5 7l3 3 3-3M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
@@ -881,8 +882,8 @@ export default function WordLookUpPage() {
       {/* ── Page header ─────────────────────────────────────────────────────── */}
       <div className="space-y-1">
         <div className="flex items-center gap-2">
-          <h2 className="font-display text-3xl text-spirit-100 italic">WordLookUp</h2>
-          <span className="text-xs px-2.5 py-1 rounded-full bg-gold-500/10 border border-gold-500/25 text-gold-500 font-medium">beta</span>
+          <h2 className="font-display text-3xl text-spirit-100">WordLookUp</h2>
+          <span className="text-xs px-2.5 py-1 rounded-full bg-accent-500/10 border border-accent-500/25 text-accent-500 font-medium">beta</span>
         </div>
         <p className="text-spirit-400 text-sm">
           Tap the mic while listening to a sermon. Detected scripture references appear instantly.
@@ -897,7 +898,7 @@ export default function WordLookUpPage() {
           <FrequencyVisualiser analyserNode={analyserNode} active={isListening} />
           <p className={`text-sm text-center transition-colors duration-300 ${
             isListening              ? 'text-flame-400' :
-            micState === 'processing' ? 'text-gold-400'  :
+            micState === 'processing' ? 'text-accent-400'  :
             micState === 'error'      ? 'text-flame-400' : 'text-spirit-500'
           }`}>
             {micState === 'idle'       && 'Tap to start listening'}
@@ -938,10 +939,10 @@ export default function WordLookUpPage() {
               <button key={i} onClick={() => handleRefClick(ref)}
                 className={`text-xs px-3 py-1.5 rounded-full border transition-all duration-150 ${
                   results.some(r => r.reference?.toLowerCase() === ref.query?.toLowerCase())
-                    ? 'bg-gold-500/15 border-gold-500/40 text-gold-400'
-                    : 'border-spirit-600 text-spirit-400 hover:border-gold-500/40 hover:text-gold-400 hover:bg-gold-500/8'
+                    ? 'bg-accent-500/15 border-accent-500/40 text-accent-400'
+                    : 'border-spirit-600 text-spirit-400 hover:border-accent-500/40 hover:text-accent-400 hover:bg-accent-500/[0.08]'
                 }`}>
-                {ref.type === 'thematic' && <span className="mr-1 opacity-60 text-gold-500">✦</span>}
+                {ref.type === 'thematic' && <Sparkles className="inline w-3.5 h-3.5 mr-1 -mt-0.5 opacity-70 text-accent-500" />}
                 {ref.query}
               </button>
             ))}

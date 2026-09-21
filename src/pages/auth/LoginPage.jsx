@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { ArrowLeft, AudioWaveform, Loader2 } from 'lucide-react'
+import VideoBackground from '../../components/VideoBackground'
+import ThemeToggle from '../../components/ThemeToggle'
 import api from '../../lib/axios'
 import useAuthStore from '../../store/authStore'
 
@@ -45,34 +48,37 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-spirit-900 flex">
+    <div className="isolate relative min-h-screen flex">
+      <VideoBackground />
+      <ThemeToggle className="absolute top-4 right-4 z-10" />
+
       {/* Left panel — branding */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 bg-radial-spirit border-r border-spirit-800">
-        <Link to="/" className="flex items-center gap-2.5">
-          <span className="text-3xl font-display text-gold-400 italic">✦</span>
-          <span className="font-display text-2xl text-spirit-100 tracking-wide">SpiritWise</span>
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 glass-chrome border-r border-black/5 dark:border-white/5">
+        <Link to="/" className="focus-ring flex items-center gap-2 rounded-lg self-start">
+          <AudioWaveform className="w-6 h-6 text-accent-400" />
+          <span className="text-xl font-semibold tracking-tight text-spirit-100">SpiritWise</span>
         </Link>
 
         <div className="space-y-6">
-          <blockquote className="font-display text-4xl text-spirit-100 italic leading-snug">
-            ``Your word is a lamp to my feet and a light to my path.``
+          <blockquote className="font-display text-4xl text-spirit-100 leading-snug tracking-tighter">
+            &ldquo;Your word is a lamp to my feet and a light to my path.&rdquo;
           </blockquote>
           <p className="text-spirit-400 text-sm font-sans">— Psalm 119:105</p>
         </div>
 
         <div className="flex items-center gap-6">
           <div className="text-center">
-            <p className="font-display text-2xl text-gold-400">2.4k+</p>
+            <p className="text-2xl font-medium tracking-tight text-spirit-100">2.4k+</p>
             <p className="text-xs text-spirit-500 uppercase tracking-widest mt-1">Sermons</p>
           </div>
-          <div className="w-px h-8 bg-spirit-700" />
+          <div className="w-px h-8 bg-black/10 dark:bg-white/10" />
           <div className="text-center">
-            <p className="font-display text-2xl text-gold-400">18k+</p>
+            <p className="text-2xl font-medium tracking-tight text-spirit-100">18k+</p>
             <p className="text-xs text-spirit-500 uppercase tracking-widest mt-1">Listeners</p>
           </div>
-          <div className="w-px h-8 bg-spirit-700" />
+          <div className="w-px h-8 bg-black/10 dark:bg-white/10" />
           <div className="text-center">
-            <p className="font-display text-2xl text-gold-400">365</p>
+            <p className="text-2xl font-medium tracking-tight text-spirit-100">365</p>
             <p className="text-xs text-spirit-500 uppercase tracking-widest mt-1">Days of Content</p>
           </div>
         </div>
@@ -80,15 +86,15 @@ export default function LoginPage() {
 
       {/* Right panel — form */}
       <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-sm space-y-8 animate-slide-up">
+        <div className="card w-full max-w-sm p-8 space-y-8 animate-slide-up">
           {/* Mobile logo */}
-          <div className="flex lg:hidden items-center gap-2 justify-center">
-            <span className="text-2xl font-display text-gold-400 italic">✦</span>
-            <span className="font-display text-xl text-spirit-100">SpiritWise</span>
-          </div>
+          <Link to="/" className="focus-ring flex lg:hidden items-center gap-2 justify-center rounded-lg">
+            <AudioWaveform className="w-6 h-6 text-accent-400" />
+            <span className="text-lg font-semibold tracking-tight text-spirit-100">SpiritWise</span>
+          </Link>
 
           <div>
-            <h2 className="font-display text-3xl text-spirit-100 italic">Welcome back</h2>
+            <h2 className="font-display text-3xl text-spirit-100">Welcome back</h2>
             <p className="text-spirit-400 text-sm mt-1">Sign in to continue your journey</p>
           </div>
 
@@ -134,10 +140,7 @@ export default function LoginPage() {
             >
               {loading ? (
                 <>
-                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
-                  </svg>
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   Signing in…
                 </>
               ) : (
@@ -147,15 +150,15 @@ export default function LoginPage() {
           </form>
 
           <p className="text-center text-sm text-spirit-400">
-            Don't have an account?{' '}
-            <Link to="/signup" className="text-gold-400 hover:text-gold-300 transition-colors">
+            Don&apos;t have an account?{' '}
+            <Link to="/signup" className="text-accent-400 hover:text-accent-300 transition-colors">
               Create one
             </Link>
           </p>
 
           <p className="text-center text-sm">
-            <Link to="/" className="text-spirit-600 hover:text-spirit-400 transition-colors text-xs">
-              ← Back to home
+            <Link to="/" className="focus-ring rounded inline-flex items-center gap-1.5 text-spirit-500 hover:text-spirit-100 transition-colors text-xs">
+              <ArrowLeft className="w-4 h-4" /> Back to home
             </Link>
           </p>
         </div>

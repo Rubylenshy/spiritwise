@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { Flame } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 import { useEngagementStats, useSermons } from '../hooks/useSermons'
 import { PageLoader, ErrorState, TagPill, XPToast } from '../components/ui'
@@ -11,8 +12,8 @@ function StreakCard({ streak }) {
   return (
     <div className="card p-5 flex items-center justify-between gap-4">
       <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-2xl bg-flame-500/10 border border-flame-500/20 flex items-center justify-center text-2xl animate-flame">
-          🔥
+        <div className="w-12 h-12 rounded-2xl bg-flame-500/10 border border-flame-500/20 flex items-center justify-center text-flame-400">
+          <Flame className="w-6 h-6 animate-flame" />
         </div>
         <div>
           <p className="label">Current streak</p>
@@ -42,13 +43,13 @@ function DailyGoalCard({ minutesToday, goalMinutes }) {
           <circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" strokeWidth="5" className="text-spirit-700" />
           <circle
             cx="32" cy="32" r="28" fill="none" stroke="currentColor" strokeWidth="5"
-            className="text-gold-500 transition-all duration-700"
+            className="text-accent-500 transition-all duration-700"
             strokeDasharray={circumference}
             strokeDashoffset={circumference * (1 - progress)}
             strokeLinecap="round"
           />
         </svg>
-        <span className="absolute inset-0 flex items-center justify-center font-mono text-xs font-medium text-gold-400">
+        <span className="absolute inset-0 flex items-center justify-center font-mono text-xs font-medium text-accent-400">
           {pct}%
         </span>
       </div>
@@ -74,7 +75,7 @@ function StreakHeatmap({ last7 }) {
       <div className="flex gap-2">
         {padded.map((entry, i) => (
           <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-            <div className={`w-full h-8 rounded-lg transition-all ${entry ? 'bg-gold-500/80' : 'bg-spirit-800'}`} />
+            <div className={`w-full h-8 rounded-lg transition-all ${entry ? 'bg-accent-500/80' : 'bg-spirit-800'}`} />
             <span className="text-xs text-spirit-500">{days[i]}</span>
           </div>
         ))}
@@ -88,8 +89,8 @@ function SermonCard({ sermon }) {
 
   return (
     <Link to={`/sermons/${sermon.id}`} className="card-hover p-4 flex gap-4 items-start group">
-      <div className="w-10 h-10 rounded-xl bg-spirit-700 border border-spirit-600 flex items-center justify-center shrink-0 group-hover:border-gold-500/40 transition-colors">
-        <svg viewBox="0 0 24 24" className="w-5 h-5 text-gold-500" fill="currentColor">
+      <div className="w-10 h-10 rounded-xl bg-spirit-700 border border-spirit-600 flex items-center justify-center shrink-0 group-hover:border-accent-500/40 transition-colors">
+        <svg viewBox="0 0 24 24" className="w-5 h-5 text-accent-500" fill="currentColor">
           <polygon points="5 3 19 12 5 21 5 3" />
         </svg>
       </div>
@@ -129,16 +130,16 @@ export default function HomePage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6 sm:space-y-8 animate-slide-up">
       {badgeToast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-spirit-800 border border-gold-500/40 text-spirit-100 px-5 py-4 rounded-2xl shadow-lg animate-slide-up">
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-spirit-800 border border-accent-500/40 text-spirit-100 px-5 py-4 rounded-2xl shadow-lg animate-slide-up">
           <span className="text-3xl leading-none">{badgeToast.icon}</span>
           <div>
-            <p className="text-gold-400 font-medium text-sm">Badge unlocked!</p>
+            <p className="text-accent-400 font-medium text-sm">Badge unlocked!</p>
             <p className="text-spirit-200 text-sm">{badgeToast.name}</p>
           </div>
         </div>
       )}
       <div>
-        <h2 className="font-display text-4xl text-spirit-100 italic">{greeting}, {firstName}</h2>
+        <h2 className="font-display text-4xl text-spirit-100">{greeting}, {firstName}</h2>
         <p className="text-spirit-400 text-sm mt-1">Here's your spiritual journey today.</p>
       </div>
 
@@ -161,7 +162,7 @@ export default function HomePage() {
           <div className="card p-5 flex items-center justify-between">
             <div>
               <p className="label">Total XP earned</p>
-              <p className="font-display text-3xl text-gold-400 mt-0.5">
+              <p className="font-display text-3xl text-accent-400 mt-0.5">
                 {(stats?.xp_points ?? 0).toLocaleString()}
               </p>
             </div>
@@ -175,8 +176,8 @@ export default function HomePage() {
 
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-display text-xl text-spirit-100 italic">Continue listening</h3>
-          <Link to="/sermons" className="text-gold-400 text-sm hover:text-gold-300 transition-colors">Browse all →</Link>
+          <h3 className="font-display text-xl text-spirit-100">Continue listening</h3>
+          <Link to="/sermons" className="text-accent-400 text-sm hover:text-accent-300 transition-colors">Browse all →</Link>
         </div>
         {sermonsLoading ? <PageLoader /> : (
           <div className="space-y-2">
@@ -185,9 +186,9 @@ export default function HomePage() {
         )}
       </div>
 
-      <div className="card p-6 border-l-2 border-l-gold-500 rounded-r-2xl rounded-l-none">
+      <div className="card p-6 border-l-2 border-l-accent-500 rounded-r-2xl rounded-l-none">
         <p className="label mb-3">Verse of the day</p>
-        <blockquote className="font-display text-xl text-spirit-100 italic leading-relaxed">
+        <blockquote className="font-display text-xl text-spirit-100 leading-relaxed">
           "Your word is a lamp to my feet and a light to my path."
         </blockquote>
         <p className="text-spirit-500 text-sm mt-3">— Psalm 119:105</p>

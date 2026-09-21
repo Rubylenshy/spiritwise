@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import useAuthStore from '../../../store/authStore'
 import ThemeToggle from '../../../components/ThemeToggle'
+import UserAvatar from '../../../components/UserAvatar'
 
 const NAV_LINKS = [
   { label: 'Features', href: '#features' },
@@ -18,15 +19,6 @@ const navLinkClass =
 
 function displayName(user) {
   return user?.first_name || user?.username || 'Friend'
-}
-
-function Avatar({ user, size = 'w-8 h-8' }) {
-  const initial = (user?.first_name?.[0] ?? user?.username?.[0] ?? '?').toUpperCase()
-  return (
-    <span className={`${size} rounded-full overflow-hidden shrink-0 flex items-center justify-center bg-blue-500/15 border border-blue-500/30 text-lp-accent-soft text-sm font-medium`}>
-      {user?.avatar ? <img src={user.avatar} alt="" className="w-full h-full object-cover" /> : initial}
-    </span>
-  )
 }
 
 /** Closes `open` state when clicking outside `ref` or pressing Escape. */
@@ -105,7 +97,7 @@ function ProfileMenu({ user, onSignOut }) {
         aria-expanded={open}
         className="lp-focus flex items-center gap-2 rounded-full pl-1 pr-3 py-1 border border-black/10 dark:border-white/10 hover:bg-lp-fg/5 transition-colors"
       >
-        <Avatar user={user} />
+        <UserAvatar user={user} />
         <span className="text-sm text-lp-fg max-w-[8rem] truncate">{displayName(user)}</span>
         <ChevronDown className={`w-4 h-4 text-lp-fg/60 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -237,7 +229,7 @@ export default function LandingNav() {
                 aria-label="Open menu"
                 aria-expanded={mobileOpen}
               >
-                {isAuthenticated ? <Avatar user={user} size="w-7 h-7" /> : <Menu className="w-5 h-5" />}
+                {isAuthenticated ? <UserAvatar user={user} className="w-7 h-7 text-xs" /> : <Menu className="w-5 h-5" />}
               </button>
             </div>
           </div>
@@ -268,7 +260,7 @@ export default function LandingNav() {
 
           {isAuthenticated && (
             <div className="px-5 py-4 border-b border-black/5 dark:border-white/5 flex items-center gap-3">
-              <Avatar user={user} size="w-10 h-10" />
+              <UserAvatar user={user} className="w-10 h-10 text-sm" />
               <div className="min-w-0">
                 <p className="text-sm font-medium text-lp-fg truncate">{displayName(user)}</p>
                 <p className="text-xs text-lp-fg/60">

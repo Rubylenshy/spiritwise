@@ -5,7 +5,7 @@ export function SeriesListPage() {
     <div className="max-w-3xl mx-auto animate-slide-up">
       <p className="label mb-4">All series</p>
       <div className="card p-12 text-center">
-        <p className="font-display text-xl text-spirit-400 italic">Coming in Phase 3 ✦</p>
+        <p className="font-display text-xl text-spirit-400">Coming in Phase 3 ✦</p>
       </div>
     </div>
   )
@@ -16,7 +16,7 @@ export function LeaderboardPage() {
     <div className="max-w-3xl mx-auto animate-slide-up">
       <p className="label mb-4">Weekly XP rankings</p>
       <div className="card p-12 text-center">
-        <p className="font-display text-xl text-spirit-400 italic">Coming in Phase 4 ✦</p>
+        <p className="font-display text-xl text-spirit-400">Coming in Phase 4 ✦</p>
       </div>
     </div>
   )
@@ -27,7 +27,7 @@ export function UserProfilePage() {
     <div className="max-w-3xl mx-auto animate-slide-up">
       <p className="label mb-4">Your profile</p>
       <div className="card p-12 text-center">
-        <p className="font-display text-xl text-spirit-400 italic">Coming in Phase 4 ✦</p>
+        <p className="font-display text-xl text-spirit-400">Coming in Phase 4 ✦</p>
       </div>
     </div>
   )
@@ -38,7 +38,7 @@ export function CloudImportPage() {
     <div className="max-w-3xl mx-auto animate-slide-up">
       <p className="label mb-4">Import sermons</p>
       <div className="card p-12 text-center">
-        <p className="font-display text-xl text-spirit-400 italic">Coming in Phase 3 ✦</p>
+        <p className="font-display text-xl text-spirit-400">Coming in Phase 3 ✦</p>
       </div>
     </div>
   )

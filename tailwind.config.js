@@ -1,31 +1,24 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
-  // Class strategy — ThemeContext toggles `dark` on <html>. Only the landing
-  // page uses `dark:` variants today; app pages are dark-only.
+  // Class strategy — ThemeContext toggles `dark` on <html>.
   darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        spirit: {
-          950: '#07090F',
-          900: '#0B0F1A',
-          800: '#111827',
-          700: '#1B2438',
-          600: '#253150',
-          500: '#334876',
-          400: '#5A7AA8',
-          300: '#8DA8CC',
-          200: '#C0D0E6',
-          100: '#E8EDF5',
-        },
-        gold: {
-          600: '#A07830',
-          500: '#C9A84C',
-          400: '#D9BC72',
-          300: '#EDD49A',
-          100: '#FAF3E0',
-        },
+        // Neutral scale — theme-aware (values in index.css :root / .dark).
+        // 900 = page background, 800 = raised surface, 700/600 = borders,
+        // 500 → 100 = text from faint to primary. Light mode inverts it.
+        spirit: Object.fromEntries(
+          [950, 900, 800, 700, 600, 500, 400, 300, 200, 100].map((n) => [
+            n,
+            `rgb(var(--spirit-${n}) / <alpha-value>)`,
+          ])
+        ),
+        // Accent (blue) — theme-aware; light mode shifts a step darker for contrast
+        accent: Object.fromEntries(
+          [600, 500, 400, 300, 100].map((n) => [n, `rgb(var(--accent-${n}) / <alpha-value>)`])
+        ),
         flame: {
           500: '#E8603C',
           400: '#F07858',
@@ -39,13 +32,10 @@ export default {
         },
       },
       fontFamily: {
-        display: ['"Cormorant Garamond"', 'Georgia', 'serif'],
-        sans: ['"DM Sans"', 'system-ui', 'sans-serif'],
+        display: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'monospace'],
         inter: ['Inter', 'system-ui', 'sans-serif'],
-      },
-      backgroundImage: {
-        'radial-spirit': 'radial-gradient(ellipse at 30% 20%, #1B2438 0%, #0B0F1A 70%)',
       },
       animation: {
         'fade-in': 'fadeIn 0.4s ease forwards',
