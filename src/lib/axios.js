@@ -1,8 +1,9 @@
 import axios from 'axios'
 import useAuthStore from '../store/authStore'
+import { API_BASE_URL } from './config'
 
 const api = axios.create({
-    baseURL: '/api',
+    baseURL: API_BASE_URL,
     headers: { 'Content-Type': 'application/json' },
 })
 
@@ -60,7 +61,8 @@ api.interceptors.response.use(
             }
 
             try {
-                const { data } = await axios.post('/api/auth/token/refresh/', {
+                // bare axios, not `api` — the interceptors must not re-enter on this call
+                const { data } = await axios.post(`${API_BASE_URL}/auth/token/refresh/`, {
                     refresh: refreshToken,
                 })
                 const newAccess = data.access

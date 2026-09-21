@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../lib/axios'
+import { ADMIN_URL } from '../lib/config'
 import { useSeries, useBulkImportCsv } from '../hooks/useSermons'
 import { Spinner } from '../components/ui'
 
@@ -418,7 +419,7 @@ function SuccessCard({ result, onUploadAnother }) {
         <div className="space-y-2 text-sm text-spirit-300">
           <div className="flex items-start gap-2">
             <span className="text-gold-500 shrink-0 mt-0.5">1.</span>
-            <span>Open <a href="http://localhost:8000/admin/sermons/sermon/" target="_blank" rel="noreferrer" className="text-gold-400 hover:underline">Django admin → Sermons</a> and find <span className="text-spirit-200">{result.sermon_title}</span></span>
+            <span>Open <a href={`${ADMIN_URL}/sermons/sermon/`} target="_blank" rel="noreferrer" className="text-gold-400 hover:underline">Django admin → Sermons</a> and find <span className="text-spirit-200">{result.sermon_title}</span></span>
           </div>
           <div className="flex items-start gap-2">
             <span className="text-gold-500 shrink-0 mt-0.5">2.</span>

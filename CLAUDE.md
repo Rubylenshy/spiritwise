@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-SpiritWise frontend — a React + Vite SPA for a sermon library and daily Bible engagement app (streaks, XP, leaderboard, AI-assisted scripture lookup while listening to a sermon). This repo is the frontend only; it expects a Django REST backend at `http://localhost:8000` (proxied through `/api` in dev — see `vite.config.js`). Until the backend is fully wired up, some pages use placeholder/stub data.
+SpiritWise frontend — a React + Vite SPA for a sermon library and daily Bible engagement app (streaks, XP, leaderboard, AI-assisted scripture lookup while listening to a sermon). This repo is the frontend only; it expects a Django REST backend (proxied through `/api` in dev — see `vite.config.js` for the current target). Until the backend is fully wired up, some pages use placeholder/stub data.
 
 The backend lives in the sibling directory [`../spiritwise-backend`](../spiritwise-backend) (same parent folder as this repo). Check there for API endpoint definitions, serializers, and models when the shape of an API response is unclear.
 
@@ -20,7 +20,7 @@ npm run lint        # eslint . --ext js,jsx --report-unused-disable-directives -
 
 There is no test runner configured in this repo.
 
-Environment: create `.env.local` with `VITE_API_BASE_URL=http://localhost:8000` if needed outside the dev proxy.
+Environment: `VITE_API_BASE_URL` is the backend **origin**, without a trailing `/api` (see `.env.example`). `src/lib/config.js` derives `API_BASE_URL` (`${origin}/api`) and `ADMIN_URL` from it; leaving it unset yields relative URLs that ride the dev proxy. Set it for any build served without that proxy (Vercel, `npm run preview`) — it is inlined at build time, so it must exist in the build environment. Never hardcode a backend URL; import from `src/lib/config.js`.
 
 ## Architecture
 

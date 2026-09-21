@@ -20,7 +20,7 @@ React + Vite frontend for SpiritWise, a sermon library and daily Bible engagemen
 # Install dependencies
 npm install
 
-# Start dev server (proxies /api → http://localhost:8000)
+# Start dev server (proxies /api → the target in vite.config.js)
 npm run dev
 
 # Build for production
@@ -29,7 +29,9 @@ npm run build
 
 Open http://localhost:5173
 
-> **Note:** The app expects a Django backend running at `http://localhost:8000`.  
+> **Note:** The app expects a Django backend. `vite.config.js` proxies `/api` to the
+> deployed backend by default — point that target at `http://localhost:8000` to run
+> against a local one.  
 > Until Phase 2 is complete, placeholder data is used throughout.
 
 ## Project structure
@@ -69,11 +71,21 @@ src/
 
 ## Environment variables
 
-Create a `.env.local` file:
+`VITE_API_BASE_URL` is the backend origin — the root, **without** a trailing `/api`.
+See `.env.example`.
+
+Leave it unset for local dev: API URLs stay relative (`/api/...`) and go through the
+Vite proxy in `vite.config.js`, which avoids CORS entirely.
+
+Set it for any build served without that proxy — Vercel, Netlify, `npm run preview`.
+It is inlined at build time, so it must be present in the deploy's build environment,
+not just at runtime:
 
 ```env
-VITE_API_BASE_URL=http://localhost:8000
+VITE_API_BASE_URL=https://spiritwise-backend.fly.dev
 ```
+
+The backend must then list that frontend origin in its `CORS_ALLOWED_ORIGINS`.
 
 ## Roadmap
 
