@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { AudioWaveform } from 'lucide-react'
 
 const FOOTER_LINKS = {
   Product: [
@@ -53,60 +54,49 @@ export default function LandingFooter() {
   const year = new Date().getFullYear()
 
   return (
-    <footer className="relative bg-spirit-900 border-t border-spirit-800 overflow-hidden">
-      {/* Subtle top glow */}
-      <div
-        className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-gold-500/20 to-transparent pointer-events-none"
-      />
-
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        {/* Main footer grid */}
+    <footer className="relative backdrop-blur-lg bg-white/70 dark:bg-[#171717]/70 border-t border-black/5 dark:border-white/5">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="py-14 grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-12">
           {/* Brand column */}
           <div className="col-span-2 md:col-span-1 space-y-5">
-            <Link to="/" className="flex items-center gap-2.5">
-              <span className="text-2xl font-display text-gold-400 italic leading-none">✦</span>
-              <span className="font-display text-xl text-spirit-100 tracking-wide">SpiritWise</span>
+            <Link to="/" className="lp-focus inline-flex items-center gap-2 rounded-lg">
+              <AudioWaveform className="w-6 h-6 text-lp-accent-soft" />
+              <span className="text-lg font-semibold tracking-tight text-lp-fg">SpiritWise</span>
             </Link>
 
-            <p className="text-spirit-500 text-sm leading-relaxed max-w-[200px]">
+            <p className="text-lp-fg/60 text-sm leading-relaxed max-w-[220px]">
               Your daily scripture journey, elevated by the Word.
             </p>
 
-            {/* Social links */}
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               {SOCIAL.map(({ label, href, icon }) => (
                 <a
                   key={label}
                   href={href}
                   aria-label={label}
-                  className="w-8 h-8 rounded-lg bg-spirit-800 border border-spirit-700 flex items-center justify-center text-spirit-500 hover:text-spirit-200 hover:border-spirit-600 transition-all duration-200"
+                  className="lp-focus w-9 h-9 rounded-lg lp-glass flex items-center justify-center text-lp-fg/60 hover:text-lp-fg hover:border-blue-500/30 transition-colors"
                 >
                   {icon}
                 </a>
               ))}
             </div>
 
-            {/* Verse of the footer */}
             <div className="pt-2">
-              <p className="font-display text-sm text-spirit-600 italic leading-relaxed">
-                "Thy word is a lamp unto my feet."
+              <p className="text-sm text-lp-fg/60 italic leading-relaxed">
+                &ldquo;Thy word is a lamp unto my feet.&rdquo;
               </p>
-              <p className="text-spirit-700 text-xs mt-1">Psalm 119:105</p>
+              <p className="text-lp-fg/60 text-xs mt-1">Psalm 119:105</p>
             </div>
           </div>
 
           {/* Link columns */}
           {Object.entries(FOOTER_LINKS).map(([category, links]) => (
             <div key={category} className="space-y-4">
-              <p className="text-spirit-300 text-xs font-medium uppercase tracking-widest">{category}</p>
+              <p className="text-lp-fg text-xs font-medium uppercase tracking-widest">{category}</p>
               <ul className="space-y-2.5">
                 {links.map(({ label, to }) => (
                   <li key={label}>
-                    <Link
-                      to={to}
-                      className="text-spirit-500 hover:text-spirit-200 text-sm transition-colors duration-150"
-                    >
+                    <Link to={to} className="lp-focus rounded text-lp-fg/60 hover:text-lp-fg text-sm transition-colors duration-150">
                       {label}
                     </Link>
                   </li>
@@ -116,12 +106,11 @@ export default function LandingFooter() {
           ))}
         </div>
 
-        {/* Bottom bar */}
-        <div className="py-6 border-t border-spirit-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-spirit-600 text-xs">
+        <div className="py-6 border-t border-black/5 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3 text-lp-fg/60 text-xs">
           <p>© {year} SpiritWise. All rights reserved.</p>
-          <p>
+          <p className="flex items-center gap-2">
             Built with faith for the global church.
-            <span className="text-gold-500/50 ml-2">✦</span>
+            <AudioWaveform className="w-4 h-4 text-lp-accent-soft" />
           </p>
         </div>
       </div>

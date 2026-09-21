@@ -1,12 +1,8 @@
 // Reusable components shared across pages
+import { Loader2, Sparkles } from 'lucide-react'
 
 export function Spinner({ className = 'w-5 h-5' }) {
-  return (
-    <svg className={`animate-spin text-gold-500 ${className}`} viewBox="0 0 24 24" fill="none">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
-    </svg>
-  )
+  return <Loader2 className={`animate-spin text-accent-500 ${className}`} />
 }
 
 export function PageLoader() {
@@ -34,35 +30,54 @@ export function ErrorState({ message = 'Something went wrong.', onRetry }) {
 export function EmptyState({ title = 'Nothing here yet', subtitle }) {
   return (
     <div className="card p-12 text-center space-y-2">
-      <p className="font-display text-xl text-spirit-400 italic">{title}</p>
+      <p className="font-display text-xl text-spirit-300">{title}</p>
       {subtitle && <p className="text-spirit-500 text-sm">{subtitle}</p>}
     </div>
   )
 }
 
-export function TagPill({ tag, active, onClick }) {
-  const TAG_COLORS = {
-    Faith: active ? 'bg-gold-500 border-gold-400 text-spirit-900' : 'border-gold-500/30 text-gold-400 bg-gold-500/10',
-    Worship: active ? 'bg-spirit-500 border-spirit-400 text-white' : 'border-spirit-500/30 text-spirit-300 bg-spirit-500/10',
-    Strength: active ? 'bg-flame-500 border-flame-400 text-white' : 'border-flame-500/20 text-flame-400 bg-flame-500/10',
-    Grace: active ? 'bg-spirit-400 border-spirit-300 text-white' : 'border-spirit-400/30 text-spirit-300 bg-spirit-400/10',
-    Prayer: active ? 'bg-gold-600 border-gold-500 text-white' : 'border-gold-600/30 text-gold-500 bg-gold-600/10',
-    Hope: active ? 'bg-spirit-300 border-spirit-200 text-spirit-900' : 'border-spirit-300/30 text-spirit-300 bg-spirit-300/10',
-    Wisdom: active ? 'bg-gold-400 border-gold-300 text-spirit-900' : 'border-gold-400/30 text-gold-400 bg-gold-400/10',
-  }
+// Tag tints — blue accent, flame, and neutral glass, in both themes
+const TAG_TONES = {
+  accent: {
+    on: 'bg-blue-500 border-blue-500 text-white',
+    off: 'border-blue-500/30 text-accent-400 bg-blue-500/10 hover:bg-blue-500/20',
+  },
+  flame: {
+    on: 'bg-flame-500 border-flame-500 text-white',
+    off: 'border-flame-500/25 text-flame-400 bg-flame-500/10 hover:bg-flame-500/20',
+  },
+  indigo: {
+    on: 'bg-indigo-500 border-indigo-500 text-white',
+    off: 'border-indigo-500/30 text-indigo-500 dark:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20',
+  },
+  neutral: {
+    on: 'bg-spirit-100 border-spirit-100 text-spirit-900',
+    off: 'border-black/10 dark:border-white/10 text-spirit-300 bg-spirit-100/5 hover:bg-spirit-100/10',
+  },
+}
 
-  const cls = TAG_COLORS[tag?.name ?? tag] ?? (
-    active
-      ? 'bg-spirit-600 border-spirit-500 text-white'
-      : 'border-spirit-600 text-spirit-400 bg-spirit-600/10'
-  )
+const TAG_TONE_BY_NAME = {
+  Faith: 'accent',
+  Worship: 'indigo',
+  Strength: 'flame',
+  Grace: 'neutral',
+  Prayer: 'accent',
+  Hope: 'indigo',
+  Wisdom: 'accent',
+}
+
+export function TagPill({ tag, active, onClick }) {
+  const name = tag?.name ?? tag
+  const tone = TAG_TONES[TAG_TONE_BY_NAME[name] ?? 'neutral']
 
   return (
     <button
       onClick={onClick}
-      className={`text-xs px-3 py-1.5 rounded-full border transition-all duration-150 ${cls}`}
+      className={`focus-ring text-xs px-3 py-1.5 rounded-full border backdrop-blur-md transition-all duration-150 ${
+        active ? tone.on : tone.off
+      }`}
     >
-      {tag?.name ?? tag}
+      {name}
     </button>
   )
 }
@@ -70,8 +85,8 @@ export function TagPill({ tag, active, onClick }) {
 export function XPToast({ xp, show }) {
   if (!show || !xp) return null
   return (
-    <div className="fixed bottom-6 right-6 bg-gold-500 text-spirit-900 font-medium px-5 py-3 rounded-2xl shadow-lg animate-slide-up z-50 flex items-center gap-2">
-      <span className="text-lg">✦</span>
+    <div className="fixed bottom-6 right-6 bg-blue-500 text-white font-medium px-5 py-3 rounded-2xl shadow-[0_20px_60px_-15px_rgba(59,130,246,.8)] animate-slide-up z-50 flex items-center gap-2">
+      <Sparkles className="w-5 h-5" />
       <span>+{xp} XP earned!</span>
     </div>
   )

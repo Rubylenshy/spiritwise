@@ -44,10 +44,18 @@ Environment: `VITE_API_BASE_URL` is the backend **origin**, without a trailing `
 
 ## Styling conventions
 
-Tailwind CSS with a custom design system defined in `tailwind.config.js`:
-- Color scales: `spirit` (dark navy neutrals, 100–950), `gold` (accent, 100–600), `flame` (error/alert, 400–500).
-- Fonts: `font-display` (Cormorant Garamond, serif — used for headings/italic emphasis), `font-sans` (DM Sans, body), `font-mono` (JetBrains Mono).
-- Reusable component classes (`card`, `btn-primary`, `btn-outline`, `btn-ghost`, `input-field`, `label`) are defined in `src/index.css` — use these instead of rebuilding button/card styles inline.
+Tailwind CSS with a glass-over-video design system (Inter type, blue accent, light/dark):
+- **Theme:** `ThemeProvider` (`src/context/ThemeContext.jsx`) toggles the `dark` class on `<html>` (`darkMode: 'class'`), persisted under localStorage `spiritwise-theme` (default `dark`). An inline script in `index.html` applies it before first paint — keep the key/default in sync. `ThemeToggle` is in the app `Navbar`, the landing nav and the auth pages.
+- **Color scales are CSS variables** defined in `src/index.css` (`:root` = light, `.dark` = dark), so they flip with the theme without `dark:` variants:
+  - `spirit` (100–950) — neutral scale. `900` page background, `800` raised surface, `700`/`600` borders, `500` → `100` text from faint to primary. Light mode inverts it.
+  - `accent` (100–600) — blue (was `gold`); light mode shifts a step darker for contrast. Use `text-white` on filled accent backgrounds.
+  - `flame` (400–500) — streak / error, fixed.
+  - `lp-*` tokens are the landing page's equivalents.
+- **Layers:** `VideoBackground` (`src/components/VideoBackground.jsx`) is a fixed `z-[-10]` video behind `RootLayout`, the landing page and the auth pages (the wrapper has `isolate`). Surfaces over it are glass: `glass` (cards/pills), `glass-chrome` (sticky header, sidebar, bottom nav, player bar). Glass borders use `border-black/10 dark:border-white/10` (or `/5` for dividers).
+- **Component classes** in `src/index.css` — use these instead of rebuilding styles inline: `card`, `card-hover`, `btn-primary` (black/gray gradient), `btn-ghost` (glass), `btn-outline`, `input-field`, `label`, `section-title`, `focus-ring`.
+- **Fonts:** Inter everywhere (`font-sans`, `font-display` — headings get light weight and tight tracking from a base-layer rule), `font-mono` (JetBrains Mono) for numbers/times. No italic headings.
+- **Icons:** `lucide-react` only (`w-4 h-4` small, `w-5 h-5` standard, `w-6 h-6` brand/large). The brand mark is `AudioWaveform`.
+- Tailwind opacity modifiers must be on the scale (`/5`, `/10`, `/15`, …) — use arbitrary values like `/[0.08]` otherwise, or the class silently generates nothing.
 - Custom animations: `animate-fade-in`, `animate-slide-up`, `animate-pulse-slow`, `animate-flame`.
 
 ESLint config (`.eslintrc.cjs`) disables `react/prop-types` — this codebase does not use PropTypes or TypeScript for prop validation.
