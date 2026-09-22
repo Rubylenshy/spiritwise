@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import axios from 'axios'
 import api from '../lib/axios'
 
 // ─── Query keys ──────────────────────────────────────────────────────────────
@@ -161,21 +162,30 @@ export function useBulkImportCsv() {
   })
 }
 
-// Uploads one audio file + metadata to R2. `fields` uses the /imports/upload/
+// Uploads one audio file + metadata. The file goes straight from the browser
+// to R2 via a presigned PUT (the API server never streams the bytes), then
+// /imports/finalize/ reads its tags and creates the sermon. `fields` uses the
 // form field names (sermon_title, sermon_speaker, sermon_series, …); empty
 // values are dropped so the backend falls back to the file's own tags.
+// Pass the `r2Key` reported via `onStored` to retry only the finalize step.
 export function useUploadSermon() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ file, fields, onProgress }) => {
-      const formData = new FormData()
-      formData.append('audio_file', file)
-      Object.entries(fields).forEach(([k, v]) => { if (v) formData.append(k, v) })
-      const { data } = await api.post('/imports/upload/', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: e => onProgress?.(e.total ? Math.round((e.loaded / e.total) * 100) : 0),
-      })
+    mutationFn: async ({ file, fields, r2Key, onProgress, onStored }) => {
+      let key = r2Key
+      if (!key) {
+        const { data: target } = await api.post('/imports/presign/', { filename: file.name })
+        // bare axios, not `api` — R2 must not receive our bearer token
+        await axios.put(target.upload_url, file, {
+          headers: { 'Content-Type': target.content_type },
+          onUploadProgress: e => onProgress?.(e.total ? Math.round((e.loaded / e.total) * 100) : 0),
+        })
+        key = target.key
+        onStored?.(key)
+      }
+      const payload = Object.fromEntries(Object.entries(fields).filter(([, v]) => v))
+      const { data } = await api.post('/imports/finalize/', { ...payload, r2_key: key })
       return data
     },
     onSuccess: () => {

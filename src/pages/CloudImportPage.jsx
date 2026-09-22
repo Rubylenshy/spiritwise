@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { AlertCircle, CheckCircle2, RotateCcw, ShieldCheck, Sparkles, UploadCloud, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import api from '../lib/axios'
 import { ADMIN_URL } from '../lib/config'
 import { useSeries, useBulkImportCsv, useUploadSermon } from '../hooks/useSermons'
 import { Spinner } from '../components/ui'
+import { detectAudioMeta, parseFilename } from '../lib/audioMeta'
 
 const CSV_TEMPLATE = `id,slug,r2_key,title,speaker,series,tags,description,scripture_reference,sermon_date,audio_url,is_published
 ,,sermons/2026-01-12-walking-in-purpose.m4a,Walking in Purpose,Pastor James,Foundations,"Faith, Purpose",A message on discovering your calling.,John 3:16,2026-01-12,,false
@@ -184,8 +184,14 @@ function FormatGuide() {
   )
 }
 
+// No response at all means the request never completed (connection dropped,
+// or R2 refused the browser's PUT because the bucket CORS isn't set up).
+const uploadErrorMessage = (err, fallback) =>
+  err.response?.data?.detail ?? (err.response ? fallback : 'Network error — the upload did not complete.')
+
 function UploadForm({ onSuccess }) {
   const { data: seriesData } = useSeries()
+  const upload = useUploadSermon()
   const fileRef = useRef(null)
 
   const [file, setFile] = useState(null)
@@ -202,6 +208,7 @@ function UploadForm({ onSuccess }) {
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [uploadError, setUploadError] = useState('')
+  const [storedKey, setStoredKey] = useState(null) // set once the file is in R2, so a retry only re-runs finalize
 
   const handleChange = e => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
@@ -214,34 +221,18 @@ function UploadForm({ onSuccess }) {
     const f = e.target.files[0]
     if (!f) return
     setFile(f)
+    setStoredKey(null)
 
-    // Auto-fill title from filename as immediate fallback
-    const filenameTitle = f.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ')
-    if (!form.sermon_title) {
-      setForm(prev => ({ ...prev, sermon_title: filenameTitle }))
-    }
-
-    // Parse audio tags from the file
+    // Tags are read in the browser — the file isn't sent anywhere until submit.
     setParsingMeta(true)
-    try {
-      const fd = new FormData()
-      fd.append('audio_file', f)
-      const { data } = await api.post('/imports/parse-metadata/', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-
-      setForm(prev => ({
-        ...prev,
-        sermon_title:   data.title   || prev.sermon_title || filenameTitle,
-        sermon_speaker: data.artist  || prev.sermon_speaker,
-        sermon_date:    data.date    || prev.sermon_date,
-        description:    data.comment || prev.description,
-      }))
-    } catch {
-      // tag parsing failed — keep filename title, no crash
-    } finally {
-      setParsingMeta(false)
-    }
+    const meta = await detectAudioMeta(f)
+    setForm(prev => ({
+      ...prev,
+      sermon_title:   meta.title   || prev.sermon_title,
+      sermon_speaker: meta.speaker || prev.sermon_speaker,
+      sermon_date:    meta.date    || prev.sermon_date,
+    }))
+    setParsingMeta(false)
   }
 
   const validate = () => {
@@ -260,22 +251,18 @@ function UploadForm({ onSuccess }) {
     setProgress(0)
     setUploadError('')
 
-    const formData = new FormData()
-    formData.append('audio_file', file)
-    Object.entries(form).forEach(([k, v]) => { if (v) formData.append(k, v) })
-
     try {
-      const { data } = await api.post('/imports/upload/', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: e => {
-          const pct = Math.round((e.loaded / e.total) * 90) // 0-90% during upload
-          setProgress(pct)
-        },
+      const data = await upload.mutateAsync({
+        file,
+        fields: form,
+        r2Key: storedKey,
+        onStored: setStoredKey,
+        onProgress: pct => setProgress(Math.round(pct * 0.9)), // 0-90% during upload
       })
       setProgress(100)
       setTimeout(() => onSuccess(data), 400)
     } catch (err) {
-      setUploadError(err.response?.data?.detail ?? 'Upload failed. Please try again.')
+      setUploadError(uploadErrorMessage(err, 'Upload failed. Please try again.'))
       setUploading(false)
       setProgress(0)
     }
@@ -407,20 +394,22 @@ function UploadForm({ onSuccess }) {
 
 const ACCEPTED_EXTENSIONS = ACCEPTED_FORMATS.split(',')
 
-const titleFromFilename = name => name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ').trim()
-
 let nextRowId = 1
 
 function makeRow(file) {
+  // Filename guess shows instantly; addFiles upgrades it once the tags are read.
+  const { title, speaker, date } = parseFilename(file.name)
   return {
     id: nextRowId++,
     file,
-    title: titleFromFilename(file.name),
-    speaker: '',
-    date: '',
+    title,
+    speaker,
+    date,
+    detecting: true,
     status: 'pending', // 'pending' | 'uploading' | 'done' | 'error'
     progress: 0,
     error: '',
+    r2Key: null, // set once the audio is in R2, so a retry only re-runs finalize
     sermonId: null,
   }
 }
@@ -456,6 +445,10 @@ function QueueRow({ row, locked, onChange, onRemove, onRetry }) {
           </button>
         )}
       </div>
+
+      {editable && row.detecting && (
+        <p className="text-spirit-500 text-xs flex items-center gap-1.5"><Spinner className="w-3 h-3" /> Reading audio tags…</p>
+      )}
 
       {editable && (
         <div className="space-y-2">
@@ -516,9 +509,19 @@ function BatchUpload() {
     const files = Array.from(fileList)
     const ok = files.filter(f => ACCEPTED_EXTENSIONS.includes(f.name.slice(f.name.lastIndexOf('.')).toLowerCase()))
     setRejected(files.filter(f => !ok.includes(f)).map(f => f.name))
-    setRows(prev => {
-      const seen = new Set(prev.map(r => `${r.file.name}:${r.file.size}`))
-      return [...prev, ...ok.filter(f => !seen.has(`${f.name}:${f.size}`)).map(makeRow)]
+
+    const seen = new Set(rowsRef.current.map(r => `${r.file.name}:${r.file.size}`))
+    const added = ok.filter(f => !seen.has(`${f.name}:${f.size}`)).map(makeRow)
+    setRows(prev => [...prev, ...added])
+
+    // Fill in tag-detected values, but never overwrite a field the admin already edited.
+    added.forEach(async initial => {
+      const meta = await detectAudioMeta(initial.file)
+      setRows(prev => prev.map(r => {
+        if (r.id !== initial.id) return r
+        const pick = field => (r[field] === initial[field] && meta[field]) || r[field]
+        return { ...r, title: pick('title'), speaker: pick('speaker'), date: pick('date'), detecting: false }
+      }))
     })
   }
 
@@ -539,10 +542,12 @@ function BatchUpload() {
       if (!row) continue
       if (!row.title.trim()) { updateRow(id, { status: 'error', error: 'Title is required.' }); continue }
 
-      updateRow(id, { status: 'uploading', progress: 0, error: '' })
+      updateRow(id, { status: 'uploading', progress: row.r2Key ? 100 : 0, error: '' })
       try {
         const data = await upload.mutateAsync({
           file: row.file,
+          r2Key: row.r2Key,
+          onStored: key => updateRow(id, { r2Key: key }),
           fields: {
             sermon_title: row.title.trim(),
             sermon_speaker: row.speaker.trim() || shared.sermon_speaker.trim(),
@@ -554,7 +559,7 @@ function BatchUpload() {
         })
         updateRow(id, { status: 'done', progress: 100, sermonId: data.sermon_id })
       } catch (err) {
-        updateRow(id, { status: 'error', error: err.response?.data?.detail ?? 'Upload failed.' })
+        updateRow(id, { status: 'error', error: uploadErrorMessage(err, 'Upload failed.') })
       }
     }
 
@@ -567,6 +572,7 @@ function BatchUpload() {
 
   const counts = rows.reduce((acc, r) => ({ ...acc, [r.status]: (acc[r.status] ?? 0) + 1 }), {})
   const queued = (counts.pending ?? 0) + (counts.error ?? 0)
+  const detecting = rows.some(r => r.detecting)
 
   return (
     <div className="space-y-5">
@@ -641,7 +647,8 @@ function BatchUpload() {
               />
             </div>
             <p className="text-spirit-500 text-xs leading-relaxed">
-              Blank speaker, date and description fall back to each file&apos;s embedded audio tags.
+              Title, speaker and date are pre-filled from each file&apos;s audio tags or filename (dates read as DD.MM.YYYY) — check them before uploading.
+              Anything left blank falls back to the default speaker above, then the file&apos;s tags.
             </p>
           </div>
 
@@ -666,8 +673,8 @@ function BatchUpload() {
               Stop after current file
             </button>
           ) : (
-            <button type="button" onClick={runQueue} disabled={!queued} className="btn-primary w-full">
-              {queued ? `Upload ${queued} file${queued === 1 ? '' : 's'}` : 'All files uploaded'}
+            <button type="button" onClick={runQueue} disabled={!queued || detecting} className="btn-primary w-full">
+              {detecting ? 'Reading audio tags…' : queued ? `Upload ${queued} file${queued === 1 ? '' : 's'}` : 'All files uploaded'}
             </button>
           )}
         </>
