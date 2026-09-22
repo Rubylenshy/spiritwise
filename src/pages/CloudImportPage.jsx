@@ -1,13 +1,13 @@
-import { useState, useRef } from 'react'
-import { CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { AlertCircle, CheckCircle2, RotateCcw, ShieldCheck, Sparkles, UploadCloud, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import api from '../lib/axios'
 import { ADMIN_URL } from '../lib/config'
-import { useSeries, useBulkImportCsv } from '../hooks/useSermons'
+import { useSeries, useBulkImportCsv, useUploadSermon } from '../hooks/useSermons'
 import { Spinner } from '../components/ui'
 
-const CSV_TEMPLATE = `id,slug,title,speaker,series,tags,description,scripture_reference,sermon_date,audio_url,is_published
-,,Walking in Purpose,Pastor James,Foundations,"Faith, Purpose",A message on discovering your calling.,John 3:16,2026-01-12,,true
+const CSV_TEMPLATE = `id,slug,r2_key,title,speaker,series,tags,description,scripture_reference,sermon_date,audio_url,is_published
+,,sermons/2026-01-12-walking-in-purpose.m4a,Walking in Purpose,Pastor James,Foundations,"Faith, Purpose",A message on discovering your calling.,John 3:16,2026-01-12,,false
 `
 
 function downloadCsvTemplate() {
@@ -58,8 +58,9 @@ function BulkCsvImport() {
         <div className="space-y-1">
           <p className="text-accent-400 font-medium text-sm">Bulk metadata import from CSV</p>
           <p className="text-spirit-400 text-xs leading-relaxed">
-            Create sermon records or update existing ones (match by <span className="font-mono text-spirit-300">id</span> or <span className="font-mono text-spirit-300">slug</span>) in one pass.
-            This edits metadata only — audio still needs to be uploaded separately, or reference an already-hosted file via <span className="font-mono text-spirit-300">audio_url</span>.
+            Create sermon records or update existing ones (match by <span className="font-mono text-spirit-300">id</span>, <span className="font-mono text-spirit-300">slug</span> or <span className="font-mono text-spirit-300">r2_key</span>) in one pass.
+            For audio already in the R2 bucket, put its object key in <span className="font-mono text-spirit-300">r2_key</span> — duration, cover art and any blank speaker/date/description are read from the file.
+            Re-running the same CSV updates those sermons rather than duplicating them.
           </p>
           <button type="button" onClick={downloadCsvTemplate} className="text-accent-400 hover:underline text-xs mt-1">
             Download CSV template →
@@ -404,6 +405,277 @@ function UploadForm({ onSuccess }) {
   )
 }
 
+const ACCEPTED_EXTENSIONS = ACCEPTED_FORMATS.split(',')
+
+const titleFromFilename = name => name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ').trim()
+
+let nextRowId = 1
+
+function makeRow(file) {
+  return {
+    id: nextRowId++,
+    file,
+    title: titleFromFilename(file.name),
+    speaker: '',
+    date: '',
+    status: 'pending', // 'pending' | 'uploading' | 'done' | 'error'
+    progress: 0,
+    error: '',
+    sermonId: null,
+  }
+}
+
+function QueueRow({ row, locked, onChange, onRemove, onRetry }) {
+  const editable = !locked && (row.status === 'pending' || row.status === 'error')
+  const set = field => e => onChange(row.id, { [field]: e.target.value })
+
+  return (
+    <div className="px-5 py-4 space-y-3">
+      <div className="flex items-center gap-3">
+        <div className="shrink-0">
+          {row.status === 'uploading' && <Spinner className="w-4 h-4 text-accent-400" />}
+          {row.status === 'done' && <CheckCircle2 className="w-4 h-4 text-accent-400" />}
+          {row.status === 'error' && <AlertCircle className="w-4 h-4 text-flame-400" />}
+          {row.status === 'pending' && <span className="block w-4 h-4 rounded-full border border-spirit-600" />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-spirit-200 text-sm truncate">{row.file.name}</p>
+          <p className="text-spirit-500 text-xs font-mono">{(row.file.size / 1024 / 1024).toFixed(1)} MB</p>
+        </div>
+        {row.status === 'done' && row.sermonId && (
+          <Link to={`/sermons/${row.sermonId}`} className="text-accent-400 hover:underline text-xs shrink-0">Preview →</Link>
+        )}
+        {row.status === 'error' && !locked && (
+          <button type="button" onClick={() => onRetry(row.id)} className="text-spirit-400 hover:text-spirit-200 shrink-0" title="Retry">
+            <RotateCcw className="w-4 h-4" />
+          </button>
+        )}
+        {editable && (
+          <button type="button" onClick={() => onRemove(row.id)} className="text-spirit-500 hover:text-flame-400 shrink-0" title="Remove">
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      {editable && (
+        <div className="space-y-2">
+          <input type="text" value={row.title} onChange={set('title')} className="input-field" placeholder="Title *" aria-label="Title" />
+          <div className="grid grid-cols-2 gap-2">
+            <input type="text" value={row.speaker} onChange={set('speaker')} className="input-field" placeholder="Speaker (default / from tags)" aria-label="Speaker" />
+            <input type="date" value={row.date} onChange={set('date')} className="input-field" aria-label="Date" />
+          </div>
+        </div>
+      )}
+
+      {row.status === 'uploading' && (
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs text-spirit-400">
+            <span>{row.progress < 100 ? 'Uploading…' : 'Processing…'}</span>
+            <span className="font-mono">{row.progress}%</span>
+          </div>
+          <div className="h-1.5 bg-spirit-700 rounded-full overflow-hidden">
+            <div className="h-full bg-accent-500 rounded-full transition-all duration-300" style={{ width: `${row.progress}%` }} />
+          </div>
+        </div>
+      )}
+
+      {row.status === 'done' && <p className="text-spirit-400 text-xs truncate">{row.title}</p>}
+      {row.error && <p className="text-flame-400 text-xs">{row.error}</p>}
+    </div>
+  )
+}
+
+function BatchUpload() {
+  const { data: seriesData } = useSeries()
+  const upload = useUploadSermon()
+  const fileRef = useRef(null)
+
+  const [rows, setRows] = useState([])
+  const [shared, setShared] = useState({ sermon_speaker: '', sermon_series: '', sermon_tags: '' })
+  const [running, setRunning] = useState(false)
+  const [dragging, setDragging] = useState(false)
+  const [rejected, setRejected] = useState([])
+
+  // The upload loop reads rows through a ref so edits made before "Upload all"
+  // and status changes from earlier iterations are both visible to it.
+  const rowsRef = useRef(rows)
+  rowsRef.current = rows
+  const stopRef = useRef(false)
+
+  // Uploads stream from this tab — warn before the admin closes it mid-queue.
+  useEffect(() => {
+    if (!running) return
+    const warn = e => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [running])
+
+  const updateRow = (id, patch) => setRows(prev => prev.map(r => (r.id === id ? { ...r, ...patch } : r)))
+
+  const addFiles = fileList => {
+    const files = Array.from(fileList)
+    const ok = files.filter(f => ACCEPTED_EXTENSIONS.includes(f.name.slice(f.name.lastIndexOf('.')).toLowerCase()))
+    setRejected(files.filter(f => !ok.includes(f)).map(f => f.name))
+    setRows(prev => {
+      const seen = new Set(prev.map(r => `${r.file.name}:${r.file.size}`))
+      return [...prev, ...ok.filter(f => !seen.has(`${f.name}:${f.size}`)).map(makeRow)]
+    })
+  }
+
+  const handleDrop = e => {
+    e.preventDefault()
+    setDragging(false)
+    if (!running) addFiles(e.dataTransfer.files)
+  }
+
+  const runQueue = async () => {
+    stopRef.current = false
+    setRunning(true)
+
+    const ids = rowsRef.current.filter(r => r.status === 'pending' || r.status === 'error').map(r => r.id)
+    for (const id of ids) {
+      if (stopRef.current) break
+      const row = rowsRef.current.find(r => r.id === id)
+      if (!row) continue
+      if (!row.title.trim()) { updateRow(id, { status: 'error', error: 'Title is required.' }); continue }
+
+      updateRow(id, { status: 'uploading', progress: 0, error: '' })
+      try {
+        const data = await upload.mutateAsync({
+          file: row.file,
+          fields: {
+            sermon_title: row.title.trim(),
+            sermon_speaker: row.speaker.trim() || shared.sermon_speaker.trim(),
+            sermon_date: row.date,
+            sermon_series: shared.sermon_series,
+            sermon_tags: shared.sermon_tags,
+          },
+          onProgress: pct => updateRow(id, { progress: pct }),
+        })
+        updateRow(id, { status: 'done', progress: 100, sermonId: data.sermon_id })
+      } catch (err) {
+        updateRow(id, { status: 'error', error: err.response?.data?.detail ?? 'Upload failed.' })
+      }
+    }
+
+    setRunning(false)
+  }
+
+  const retryRow = id => updateRow(id, { status: 'pending', error: '' })
+  const removeRow = id => setRows(prev => prev.filter(r => r.id !== id))
+  const clearFinished = () => setRows(prev => prev.filter(r => r.status !== 'done'))
+
+  const counts = rows.reduce((acc, r) => ({ ...acc, [r.status]: (acc[r.status] ?? 0) + 1 }), {})
+  const queued = (counts.pending ?? 0) + (counts.error ?? 0)
+
+  return (
+    <div className="space-y-5">
+      <div
+        onClick={() => !running && fileRef.current?.click()}
+        onDragOver={e => { e.preventDefault(); if (!running) setDragging(true) }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={handleDrop}
+        className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all ${
+          running ? 'opacity-50 cursor-not-allowed border-spirit-600'
+            : dragging ? 'border-accent-500/50 bg-accent-500/5 cursor-pointer'
+            : 'border-spirit-600 hover:border-spirit-500 hover:bg-spirit-800/50 cursor-pointer'
+        }`}
+      >
+        <input
+          ref={fileRef}
+          type="file"
+          multiple
+          accept={ACCEPTED_FORMATS}
+          onChange={e => { addFiles(e.target.files); e.target.value = '' }}
+          className="hidden"
+        />
+        <UploadCloud className="w-10 h-10 text-spirit-500 mx-auto mb-2" />
+        <p className="text-spirit-300 font-medium">Drop audio files here, or click to select</p>
+        <p className="text-spirit-500 text-xs mt-1">Files upload one after another — keep this tab open until the queue finishes</p>
+      </div>
+      {rejected.length > 0 && (
+        <p className="text-flame-400 text-xs -mt-3">Skipped unsupported files: {rejected.join(', ')}</p>
+      )}
+
+      {rows.length > 0 && (
+        <>
+          <div className="card p-5 space-y-3">
+            <p className="label">Applied to every file</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="label" htmlFor="batch_series">Series</label>
+                <select
+                  id="batch_series"
+                  value={shared.sermon_series}
+                  disabled={running}
+                  onChange={e => setShared(prev => ({ ...prev, sermon_series: e.target.value }))}
+                  className="input-field"
+                >
+                  <option value="">— None —</option>
+                  {(seriesData ?? []).map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="label" htmlFor="batch_tags">Tags</label>
+                <input
+                  id="batch_tags"
+                  type="text"
+                  value={shared.sermon_tags}
+                  disabled={running}
+                  onChange={e => setShared(prev => ({ ...prev, sermon_tags: e.target.value }))}
+                  className="input-field"
+                  placeholder="Faith, Hope"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="label" htmlFor="batch_speaker">Default speaker</label>
+              <input
+                id="batch_speaker"
+                type="text"
+                value={shared.sermon_speaker}
+                disabled={running}
+                onChange={e => setShared(prev => ({ ...prev, sermon_speaker: e.target.value }))}
+                className="input-field"
+                placeholder="Used when a file has no speaker set"
+              />
+            </div>
+            <p className="text-spirit-500 text-xs leading-relaxed">
+              Blank speaker, date and description fall back to each file&apos;s embedded audio tags.
+            </p>
+          </div>
+
+          <div className="card divide-y divide-spirit-700">
+            <div className="px-5 py-3 flex items-center justify-between gap-3 text-xs text-spirit-400">
+              <span>
+                {rows.length} file{rows.length === 1 ? '' : 's'}
+                {counts.done ? ` · ${counts.done} uploaded` : ''}
+                {counts.error ? ` · ${counts.error} failed` : ''}
+              </span>
+              {counts.done > 0 && !running && (
+                <button type="button" onClick={clearFinished} className="hover:text-spirit-200">Clear finished</button>
+              )}
+            </div>
+            {rows.map(row => (
+              <QueueRow key={row.id} row={row} locked={running} onChange={updateRow} onRemove={removeRow} onRetry={retryRow} />
+            ))}
+          </div>
+
+          {running ? (
+            <button type="button" onClick={() => { stopRef.current = true }} className="btn-ghost w-full text-sm">
+              Stop after current file
+            </button>
+          ) : (
+            <button type="button" onClick={runQueue} disabled={!queued} className="btn-primary w-full">
+              {queued ? `Upload ${queued} file${queued === 1 ? '' : 's'}` : 'All files uploaded'}
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 function SuccessCard({ result, onUploadAnother }) {
   return (
     <div className="space-y-5 animate-slide-up">
@@ -447,27 +719,35 @@ function SuccessCard({ result, onUploadAnother }) {
 
 export default function CloudImportPage() {
   const [result, setResult] = useState(null)
-  const [mode, setMode] = useState('single') // 'single' | 'bulk'
+  const [mode, setMode] = useState('single') // 'single' | 'batch' | 'bulk'
+
+  const tabs = [
+    { id: 'single', label: 'Upload one' },
+    { id: 'batch', label: 'Upload many' },
+    { id: 'bulk', label: 'Bulk CSV' },
+  ]
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-slide-up">
       {/* Mode tabs */}
       <div className="flex gap-2 p-1 bg-spirit-800 rounded-2xl">
-        <button
-          onClick={() => setMode('single')}
-          className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${mode === 'single' ? 'bg-spirit-700 text-accent-400' : 'text-spirit-400 hover:text-spirit-200'}`}
-        >
-          Upload one sermon
-        </button>
-        <button
-          onClick={() => setMode('bulk')}
-          className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${mode === 'bulk' ? 'bg-spirit-700 text-accent-400' : 'text-spirit-400 hover:text-spirit-200'}`}
-        >
-          Bulk CSV import
-        </button>
+        {tabs.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setMode(t.id)}
+            className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${mode === t.id ? 'bg-spirit-700 text-accent-400' : 'text-spirit-400 hover:text-spirit-200'}`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {mode === 'single' ? (
+      {mode === 'batch' ? (
+        <>
+          <FormatGuide />
+          <BatchUpload />
+        </>
+      ) : mode === 'single' ? (
         <>
           {/* Admin notice */}
           <div className="flex items-start gap-3 bg-accent-500/[0.08] border border-accent-500/20 rounded-2xl px-5 py-4">
