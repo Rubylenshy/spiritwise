@@ -161,6 +161,30 @@ export function useBulkImportCsv() {
   })
 }
 
+// Uploads one audio file + metadata to R2. `fields` uses the /imports/upload/
+// form field names (sermon_title, sermon_speaker, sermon_series, …); empty
+// values are dropped so the backend falls back to the file's own tags.
+export function useUploadSermon() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ file, fields, onProgress }) => {
+      const formData = new FormData()
+      formData.append('audio_file', file)
+      Object.entries(fields).forEach(([k, v]) => { if (v) formData.append(k, v) })
+      const { data } = await api.post('/imports/upload/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: e => onProgress?.(e.total ? Math.round((e.loaded / e.total) * 100) : 0),
+      })
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sermons'] })
+      queryClient.invalidateQueries({ queryKey: KEYS.tags() })
+    },
+  })
+}
+
 // ─── Badges ───────────────────────────────────────────────────────────────────
 
 export function useBadges() {
