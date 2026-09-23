@@ -1,6 +1,6 @@
 // Reusable components shared across pages
 import { useState } from 'react'
-import { Eye, EyeOff, Loader2, Sparkles } from 'lucide-react'
+import { Eye, EyeOff, Loader2 } from 'lucide-react'
 
 export function Spinner({ className = 'w-5 h-5' }) {
   return <Loader2 className={`animate-spin text-accent-500 ${className}`} />
@@ -80,16 +80,6 @@ export function TagPill({ tag, active, onClick }) {
     >
       {name}
     </button>
-  )
-}
-
-export function XPToast({ xp, show }) {
-  if (!show || !xp) return null
-  return (
-    <div className="fixed bottom-6 right-6 bg-blue-500 text-white font-medium px-5 py-3 rounded-2xl shadow-[0_20px_60px_-15px_rgba(59,130,246,.8)] animate-slide-up z-50 flex items-center gap-2">
-      <Sparkles className="w-5 h-5" />
-      <span>+{xp} XP earned!</span>
-    </div>
   )
 }
 

@@ -32,7 +32,9 @@ Never add a `Co-Authored-By: Claude …` trailer or any other Claude/AI attribut
 
 **Auth** — `src/store/authStore.js` is a Zustand store (persisted to localStorage under key `spiritwise-auth`) holding `user`, `accessToken`, `refreshToken`, `isAuthenticated`. `src/lib/axios.js` wraps a single `api` axios instance (`baseURL: /api`): a request interceptor attaches the bearer token, a response interceptor auto-refreshes on 401 (queuing concurrent requests during refresh) and force-logs-out + redirects to `/login` if refresh fails. `useAuthSync` (`src/hooks/useAuthSync.js`), called once from `RootLayout`, fetches `/auth/me/` on mount to hydrate fresh user fields (xp, streak, badges) into the store.
 
-**Server state** — TanStack Query. All query/mutation hooks live centrally in `src/hooks/useSermons.js` (sermons, series, tags, progress, engagement stats, leaderboard, answers, badges) with query keys under the `KEYS` object — add new server-state hooks here rather than inlining `useQuery` in page components. Note the `useUpdateProgress` mutation deliberately never invalidates the sermon detail query (a new `audio_signed_url` would reset playback); it only invalidates engagement stats when XP was actually awarded.
+**Server state** — TanStack Query. All query/mutation hooks live centrally in `src/hooks/useSermons.js` (sermons, series, tags, progress, engagement stats, leaderboard, answers, badges) with query keys under the `KEYS` object — add new server-state hooks here rather than inlining `useQuery` in page components. Never invalidate the sermon detail query while it's playing (a new `audio_signed_url` would reset playback).
+
+**XP & badges** — the server is the only source of truth. Every endpoint that can award XP (`/sermons/:id/progress/`, `/engagement/answers/`) returns `xp_awarded`, `xp_points` and `new_badges`; pass the response to `useApplyReward()` (`src/hooks/useSermons.js`), which updates the balance, invalidates stats/badges/leaderboard and queues announcements in `src/store/rewardStore.js` for `RewardToaster` (rendered in `RootLayout`). Never show an XP toast the server didn't confirm. A sermon counts as completed at 90% played — `COMPLETION_THRESHOLD` in `AudioContext.jsx`, mirrored in the backend's `sermons/views.py`.
 
 **Global audio player (`src/context/AudioContext.jsx`)** — A single `<audio>` element lives in `AudioProvider` (wrapping the whole app in `App.jsx`, outside the router) and never unmounts, so playback survives navigation. `FloatingPlayer` (rendered in `RootLayout`) is the persistent mini-player UI; the full player page (`/sermons/:id`) reads from the same context via `useAudio()`. Progress is synced to the backend every 15s while playing and on pause/seek/end via `syncProgress`.
 
@@ -44,7 +46,7 @@ Never add a `Co-Authored-By: Claude …` trailer or any other Claude/AI attribut
 
 **Landing page** — `src/pages/landing/` is a self-contained marketing page tree (`LandingPage.jsx` + `components/*Section.jsx`) with its own nav/footer, deliberately not sharing `RootLayout`.
 
-**Shared UI** — `src/components/ui.jsx` holds small cross-page primitives (`Spinner`, `PageLoader`, `ErrorState`, `EmptyState`, `TagPill`, `XPToast`). Prefer reusing these over rebuilding loading/error/empty states per page.
+**Shared UI** — `src/components/ui.jsx` holds small cross-page primitives (`Spinner`, `PageLoader`, `ErrorState`, `EmptyState`, `TagPill`, `PasswordInput`). Prefer reusing these over rebuilding loading/error/empty states per page.
 
 ## Styling conventions
 

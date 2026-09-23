@@ -3,7 +3,7 @@ import { AudioWaveform, Check, Volume1, Volume2, VolumeX } from 'lucide-react'
 import { useParams, Link } from 'react-router-dom'
 import { useSermon, useSubmitAnswer } from '../hooks/useSermons'
 import { useAudio } from '../context/AudioContext'
-import { PageLoader, ErrorState, Spinner, XPToast } from '../components/ui'
+import { PageLoader, ErrorState, Spinner } from '../components/ui'
 import SeekBar from '../components/SeekBar'
 
 function formatTime(seconds) {
@@ -16,21 +16,17 @@ function formatTime(seconds) {
 function ReflectionQuestion({ question, sermonId, index }) {
   const [answer, setAnswer] = useState('')
   const [submitted, setSubmitted] = useState(false)
-  const [xpToast, setXpToast] = useState(false)
   const submitAnswer = useSubmitAnswer()
 
+  // XP / badge announcements come from the server response (useSubmitAnswer)
   const handleSubmit = async () => {
     if (!answer.trim()) return
-    const result = await submitAnswer.mutateAsync({
+    await submitAnswer.mutateAsync({
       questionId: question.id,
       sermonId,
       answerText: answer,
     })
     setSubmitted(true)
-    if (result.xp_awarded > 0) {
-      setXpToast(true)
-      setTimeout(() => setXpToast(false), 3000)
-    }
   }
 
   return (
@@ -63,7 +59,6 @@ function ReflectionQuestion({ question, sermonId, index }) {
           <p className="text-accent-500 text-xs mt-2 flex items-center gap-1"><Check className="w-4 h-4" /> Saved</p>
         </div>
       )}
-      <XPToast xp={10} show={xpToast} />
     </div>
   )
 }
@@ -116,7 +111,6 @@ export default function SermonPlayerPage() {
   } = useAudio()
 
   const [showQuestions, setShowQuestions] = useState(false)
-  const [xpToast, setXpToast] = useState(false)
 
   const isThisSermon = currentSermon?.id === sermon?.id
   const effectiveDuration = isThisSermon ? duration : (sermon?.duration_seconds ?? 0)
@@ -135,15 +129,10 @@ export default function SermonPlayerPage() {
     }
   }, [sermon?.id, sermon?.audio_signed_url])
 
-  // Show questions when 80% complete
+  // Show questions when 80% complete. The completion XP (at 90%) is announced
+  // by the global player once the server confirms it — see AudioContext.
   useEffect(() => {
-    if (effectiveProgress >= 0.8 && !showQuestions && sermon) {
-      setShowQuestions(true)
-      if (!sermon.user_progress?.completed) {
-        setXpToast(true)
-        setTimeout(() => setXpToast(false), 3000)
-      }
-    }
+    if (effectiveProgress >= 0.8 && !showQuestions && sermon) setShowQuestions(true)
   }, [effectiveProgress, showQuestions, sermon])
 
   // Show questions if already completed
@@ -163,7 +152,6 @@ export default function SermonPlayerPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-slide-up w-full">
-      <XPToast xp={50} show={xpToast} />
 
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-xs text-spirit-500">

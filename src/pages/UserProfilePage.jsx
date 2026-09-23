@@ -7,7 +7,14 @@ import { useBadges, useEngagementStats } from '../hooks/useSermons'
 
 // ── Badge shelf ───────────────────────────────────────────────────────────────
 
-function BadgeShelf({ badges, recentBadges }) {
+// Badges earned within this window are highlighted as "new"
+const NEW_BADGE_DAYS = 7
+
+function isNewBadge(earnedAt) {
+  return !!earnedAt && Date.now() - new Date(earnedAt).getTime() < NEW_BADGE_DAYS * 86_400_000
+}
+
+function BadgeShelf({ badges }) {
   const [showAll, setShowAll] = useState(false)
 
   const allBadges = badges ?? []
@@ -34,7 +41,7 @@ function BadgeShelf({ badges, recentBadges }) {
       </div>
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {displayed.map((ub) => {
-          const isNew = recentBadges?.some(r => r.name === ub.badge.name)
+          const isNew = isNewBadge(ub.earned_at)
           return (
             <div
               key={ub.id}
@@ -207,6 +214,7 @@ function SettingsForm({ user, onSaved }) {
 
 export default function UserProfilePage() {
   const user = useAuthStore((s) => s.user)
+  const setUser = useAuthStore((s) => s.setUser)
   const [avatarUploading, setAvatarUploading] = useState(false)
 
   const handleAvatarChange = async (e) => {
@@ -229,6 +237,7 @@ export default function UserProfilePage() {
 
   const { data: badges, isLoading: badgesLoading } = useBadges()
   const { data: stats } = useEngagementStats()
+  const recentBadges = (stats?.recent_badges ?? []).filter((b) => isNewBadge(b.earned_at))
 
   const initials = (user?.first_name?.[0] ?? user?.username?.[0] ?? '?').toUpperCase()
   const displayName = user?.first_name
@@ -291,12 +300,12 @@ export default function UserProfilePage() {
         currentStreak={user?.current_streak ?? 0}
       />
 
-      {/* Recently earned badges — from stats */}
-      {stats?.recent_badges?.length > 0 && (
+      {/* Recently earned badges — from stats, only those earned in the last week */}
+      {recentBadges.length > 0 && (
         <div className="card p-5 border-l-2 border-l-accent-500 rounded-r-2xl rounded-l-none animate-slide-up">
           <p className="label mb-3">Recently earned</p>
           <div className="flex gap-3 flex-wrap">
-            {stats.recent_badges.map((b) => (
+            {recentBadges.map((b) => (
               <div key={b.name} className="flex items-center gap-2 bg-accent-500/10 border border-accent-500/20 rounded-xl px-3 py-2">
                 <span className="text-lg">{b.icon}</span>
                 <div>
@@ -313,7 +322,7 @@ export default function UserProfilePage() {
       {badgesLoading ? (
         <div className="card p-8 flex justify-center"><Spinner className="w-6 h-6" /></div>
       ) : (
-        <BadgeShelf badges={badges} recentBadges={stats?.recent_badges} />
+        <BadgeShelf badges={badges} />
       )}
 
       {/* Settings */}

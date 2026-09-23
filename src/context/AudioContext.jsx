@@ -1,7 +1,12 @@
 import { createContext, useContext, useRef, useState, useCallback, useEffect } from 'react'
 import api from '../lib/axios'
+import { useApplyReward } from '../hooks/useSermons'
 
 const AudioContext = createContext(null)
+
+// Fraction of a sermon that must be played for it to count as completed (and
+// earn XP). Keep in sync with COMPLETION_THRESHOLD in the backend's sermons/views.py.
+export const COMPLETION_THRESHOLD = 0.9
 
 // iOS/iPadOS Safari ignores writes to media.volume (it always reads back 1) —
 // volume there is hardware-only, but `muted` still works.
@@ -15,6 +20,8 @@ export function AudioProvider({ children }) {
   const audioRef = useRef(null)
   const progressTimerRef = useRef(null)
   const syncTimeoutRef = useRef(null)
+  const completionSentRef = useRef(false)  // completion synced for the current sermon
+  const applyReward = useApplyReward()
 
   const [currentSermon, setCurrentSermon] = useState(null)  // full sermon object
   const [playing, setPlaying] = useState(false)
@@ -25,20 +32,43 @@ export function AudioProvider({ children }) {
   const [loading, setLoading] = useState(false)
 
   // ── Sync progress to backend ────────────────────────────────────────────────
-  const syncProgress = useCallback((completed = false) => {
-    if (!currentSermon || !audioRef.current) return
-    const secs = Math.floor(audioRef.current.currentTime)
+  // `completed` is sent whenever playback is past the threshold; the server
+  // re-checks it, keeps completion sticky and only pays XP the first time.
+  const syncProgress = useCallback(() => {
+    const audio = audioRef.current
+    if (!currentSermon || !audio) return
+    const secs = Math.floor(audio.currentTime)
     if (secs < 3) return
+    const total = Number.isFinite(audio.duration) ? audio.duration : currentSermon.duration_seconds
+    const completed = audio.ended || (total > 0 && audio.currentTime >= total * COMPLETION_THRESHOLD)
     api.post(`/sermons/${currentSermon.id}/progress/`, {
       progress_seconds: secs,
       completed,
-    }).catch(() => {})
-  }, [currentSermon])
+    })
+      .then(({ data }) => applyReward(data))
+      .catch(() => {})
+  }, [currentSermon, applyReward])
+
+  // Sync the moment playback crosses the threshold, so the XP lands right
+  // away instead of on the next 15s tick (or never, if the listener leaves).
+  const handleTimeUpdate = () => {
+    const audio = audioRef.current
+    if (!audio) return
+    setCurrentTime(audio.currentTime)
+    if (
+      !completionSentRef.current &&
+      audio.duration > 0 &&
+      audio.currentTime >= audio.duration * COMPLETION_THRESHOLD
+    ) {
+      completionSentRef.current = true
+      syncProgress()
+    }
+  }
 
   // Auto-sync every 15s while playing
   useEffect(() => {
     if (playing) {
-      progressTimerRef.current = setInterval(() => syncProgress(false), 15000)
+      progressTimerRef.current = setInterval(syncProgress, 15000)
     } else {
       clearInterval(progressTimerRef.current)
     }
@@ -61,7 +91,8 @@ export function AudioProvider({ children }) {
     }
 
     // New sermon — sync old one first
-    if (currentSermon) syncProgress(false)
+    if (currentSermon) syncProgress()
+    completionSentRef.current = false
 
     setCurrentSermon(sermon)
     setCurrentTime(startTime)
@@ -89,7 +120,7 @@ export function AudioProvider({ children }) {
     if (!audio || !currentSermon) return
     if (playing) {
       audio.pause()
-      syncProgress(false)
+      syncProgress()
     } else {
       audio.play().catch(() => {})
     }
@@ -159,13 +190,13 @@ export function AudioProvider({ children }) {
       <audio
         ref={audioRef}
         preload="metadata"
-        onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime ?? 0)}
+        onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={() => setDuration(audioRef.current?.duration ?? 0)}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onEnded={() => {
           setPlaying(false)
-          syncProgress(true)
+          syncProgress()
         }}
         onWaiting={() => setLoading(true)}
         onCanPlay={() => setLoading(false)}
