@@ -57,6 +57,7 @@ export default function SignUpPage() {
         username: form.username,
         email: form.email,
         password: form.password,
+        confirm_password: form.confirm_password,
         first_name: form.first_name,
         last_name: form.last_name,
       })
@@ -143,7 +144,7 @@ export default function SignUpPage() {
 
               <div className="space-y-1.5">
                 <label className="label" htmlFor="confirm_password">Confirm password</label>
-                <input id="confirm_password" name="confirm_password" type="password" value={form.confirm_password} onChange={handleChange} className="input-field" placeholder="••••••••" />
+                <input id="confirm_password" name="confirm_password" type="password" value={form.confirm_password} onChange={handleChange} className="input-field" placeholder="Enter password again" />
                 <FieldError name="confirm_password" />
               </div>
 
