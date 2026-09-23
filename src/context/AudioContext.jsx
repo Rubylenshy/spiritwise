@@ -3,6 +3,14 @@ import api from '../lib/axios'
 
 const AudioContext = createContext(null)
 
+// iOS/iPadOS Safari ignores writes to media.volume (it always reads back 1) —
+// volume there is hardware-only, but `muted` still works.
+const VOLUME_CONTROLLABLE = (() => {
+  const probe = document.createElement('audio')
+  probe.volume = 0.5
+  return probe.volume === 0.5
+})()
+
 export function AudioProvider({ children }) {
   const audioRef = useRef(null)
   const progressTimerRef = useRef(null)
@@ -13,6 +21,7 @@ export function AudioProvider({ children }) {
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(1)
+  const [muted, setMuted] = useState(false)
   const [loading, setLoading] = useState(false)
 
   // ── Sync progress to backend ────────────────────────────────────────────────
@@ -88,19 +97,39 @@ export function AudioProvider({ children }) {
 
   const seek = useCallback((seconds) => {
     const audio = audioRef.current
-    if (!audio) return
-    audio.currentTime = Math.max(0, Math.min(seconds, audio.duration || 0))
-  }, [])
+    if (!audio || !audio.src) return
+    // Before metadata loads audio.duration is NaN — fall back to the known
+    // duration instead of clamping every seek to 0.
+    const max = Number.isFinite(audio.duration) ? audio.duration : (duration || seconds)
+    const target = Math.max(0, Math.min(seconds, max))
+    audio.currentTime = target
+    // Update immediately so the seek bar doesn't snap back until timeupdate fires
+    setCurrentTime(target)
+  }, [duration])
 
   const skip = useCallback((delta) => {
     const audio = audioRef.current
     if (!audio) return
-    audio.currentTime = Math.max(0, Math.min(audio.currentTime + delta, audio.duration || 0))
-  }, [])
+    seek(audio.currentTime + delta)
+  }, [seek])
 
   const changeVolume = useCallback((v) => {
     setVolume(v)
-    if (audioRef.current) audioRef.current.volume = v
+    const audio = audioRef.current
+    if (!audio) return
+    audio.volume = v
+    // Dragging the slider up from zero should also bring sound back
+    if (v > 0 && audio.muted) {
+      audio.muted = false
+      setMuted(false)
+    }
+  }, [])
+
+  const toggleMute = useCallback(() => {
+    const audio = audioRef.current
+    if (!audio) return
+    audio.muted = !audio.muted
+    setMuted(audio.muted)
   }, [])
 
   // ── Wire up the single global <audio> element ──────────────────────────────
@@ -115,6 +144,8 @@ export function AudioProvider({ children }) {
       duration,
       progress,
       volume,
+      muted,
+      volumeControllable: VOLUME_CONTROLLABLE,
       loading,
       loadSermon,
       togglePlay,
@@ -122,6 +153,7 @@ export function AudioProvider({ children }) {
       skip,
       syncProgress,
       changeVolume,
+      toggleMute,
     }}>
       {/* Single global audio element — never unmounts */}
       <audio

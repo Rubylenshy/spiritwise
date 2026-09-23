@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { AudioWaveform, Loader2, Maximize2, Pause, Play, RotateCcw, RotateCw } from 'lucide-react'
 import { useAudio } from '../../context/AudioContext'
+import SeekBar from '../SeekBar'
 
 function formatTime(seconds) {
   if (!seconds || isNaN(seconds)) return '0:00'
@@ -36,7 +37,6 @@ export default function FloatingPlayer() {
     playing,
     currentTime,
     duration,
-    progress,
     loading,
     togglePlay,
     seek,
@@ -51,21 +51,17 @@ export default function FloatingPlayer() {
 
   return (
     // Mobile: sits on top of the BottomNav (h-14 + safe area); desktop: flush, right of the sidebar
-    <div className="fixed inset-x-0 z-40 bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-0 lg:left-64">
-      {/* Progress bar — sits above the bar */}
-      <div
-        className="h-1 bg-spirit-100/10 cursor-pointer"
-        onClick={(e) => {
-          if (!hasSermon) return
-          const rect = e.currentTarget.getBoundingClientRect()
-          seek(((e.clientX - rect.left) / rect.width) * duration)
-        }}
-      >
-        <div
-          className="h-full bg-accent-500 transition-all duration-100"
-          style={{ width: `${progress * 100}%` }}
-        />
-      </div>
+    <div className="fixed inset-x-0 z-30 bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-0 lg:left-64">
+      {/* Progress bar — a 4px track along the top edge, with a taller
+          transparent hit area overhanging it so it's grabbable on touch */}
+      <SeekBar
+        currentTime={currentTime}
+        duration={duration}
+        onSeek={seek}
+        disabled={!hasSermon}
+        className="h-5 -mt-4 items-end"
+        trackClassName="h-1"
+      />
 
       {/* Main bar */}
       <div className="glass-chrome border-t border-black/5 dark:border-white/5 px-4 py-2 flex items-center gap-3">

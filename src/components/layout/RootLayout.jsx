@@ -31,21 +31,21 @@ export default function RootLayout() {
     : 'SpiritWise')
 
   return (
-    <div className="isolate flex min-h-screen">
+    <div className="app-shell isolate flex min-h-screen">
       {/* Layer 1: fixed video background (z-[-10]) — cards/chrome are glass over it */}
       <VideoBackground dense />
 
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-20 lg:hidden"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <div className={`
-        fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-200
+        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-200
         lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:z-auto
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>

@@ -3,11 +3,15 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, AudioWaveform, Loader2 } from 'lucide-react'
 import VideoBackground from '../../components/VideoBackground'
 import ThemeToggle from '../../components/ThemeToggle'
+import { PasswordInput } from '../../components/ui'
 import api from '../../lib/axios'
+import { normalizeUsername } from '../../lib/validators'
 import useAuthStore from '../../store/authStore'
 
 export default function LoginPage() {
-  const [form, setForm] = useState({ username: '', password: '' })
+  const lastUsername = useAuthStore((s) => s.lastUsername)
+  const forgetLastUsername = useAuthStore((s) => s.forgetLastUsername)
+  const [form, setForm] = useState({ username: lastUsername, password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -32,7 +36,11 @@ export default function LoginPage() {
     }
     setLoading(true)
     try {
-      const { data } = await api.post('/auth/login/', form)
+      // The field also accepts an email; both are matched case-insensitively.
+      const { data } = await api.post('/auth/login/', {
+        username: normalizeUsername(form.username),
+        password: form.password,
+      })
       setAuth({
         user: data.user,
         accessToken: data.access,
@@ -106,23 +114,38 @@ export default function LoginPage() {
                 name="username"
                 type="text"
                 autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                autoFocus={!lastUsername}
                 value={form.username}
                 onChange={handleChange}
                 className="input-field"
                 placeholder="your_username"
               />
+              {lastUsername && form.username === lastUsername && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    forgetLastUsername()
+                    setForm((prev) => ({ ...prev, username: '' }))
+                    document.getElementById('username')?.focus()
+                  }}
+                  className="focus-ring rounded text-xs text-spirit-500 hover:text-accent-400 transition-colors"
+                >
+                  Not {lastUsername}? Use another account
+                </button>
+              )}
             </div>
 
             <div className="space-y-1.5">
               <label className="label" htmlFor="password">Password</label>
-              <input
+              <PasswordInput
                 id="password"
                 name="password"
-                type="password"
                 autoComplete="current-password"
+                autoFocus={!!lastUsername}
                 value={form.password}
                 onChange={handleChange}
-                className="input-field"
                 placeholder="••••••••"
               />
             </div>

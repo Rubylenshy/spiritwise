@@ -8,9 +8,16 @@ const useAuthStore = create(
       accessToken: null,
       refreshToken: null,
       isAuthenticated: false,
+      // Prefills the login form. Deliberately survives logout; never store the password.
+      lastUsername: '',
 
       setAuth: ({ user, accessToken, refreshToken }) =>
-        set({ user, accessToken, refreshToken, isAuthenticated: true }),
+        set({
+          user, accessToken, refreshToken, isAuthenticated: true,
+          lastUsername: user?.username ?? get().lastUsername,
+        }),
+
+      forgetLastUsername: () => set({ lastUsername: '' }),
 
       setUser: (user) => set({ user }),
 
@@ -30,6 +37,7 @@ const useAuthStore = create(
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
+        lastUsername: state.lastUsername,
       }),
     }
   )

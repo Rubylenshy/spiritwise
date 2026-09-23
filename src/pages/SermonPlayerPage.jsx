@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { AudioWaveform, Check } from 'lucide-react'
+import { AudioWaveform, Check, Volume1, Volume2, VolumeX } from 'lucide-react'
 import { useParams, Link } from 'react-router-dom'
 import { useSermon, useSubmitAnswer } from '../hooks/useSermons'
 import { useAudio } from '../context/AudioContext'
 import { PageLoader, ErrorState, Spinner, XPToast } from '../components/ui'
+import SeekBar from '../components/SeekBar'
 
 function formatTime(seconds) {
   if (!seconds || isNaN(seconds)) return '0:00'
@@ -108,7 +109,10 @@ export default function SermonPlayerPage() {
     seek,
     skip,
     volume,
+    muted,
+    volumeControllable,
     changeVolume,
+    toggleMute,
   } = useAudio()
 
   const [showQuestions, setShowQuestions] = useState(false)
@@ -118,6 +122,7 @@ export default function SermonPlayerPage() {
   const effectiveDuration = isThisSermon ? duration : (sermon?.duration_seconds ?? 0)
   const effectiveTime = isThisSermon ? currentTime : (sermon?.user_progress?.progress_seconds ?? 0)
   const effectiveProgress = effectiveDuration > 0 ? effectiveTime / effectiveDuration : 0
+  const VolumeIcon = muted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2
 
   // Load sermon into global player when page opens
   useEffect(() => {
@@ -149,10 +154,11 @@ export default function SermonPlayerPage() {
   if (isLoading) return <PageLoader />
   if (error) return <ErrorState message="Could not load this sermon." onRetry={refetch} />
 
-  const handleSeekClick = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-    seek(ratio * effectiveDuration)
+  // Seeking a sermon that isn't loaded yet starts it at that point, rather
+  // than moving whatever else is currently in the global player
+  const handleSeek = (seconds) => {
+    if (isThisSermon) seek(seconds)
+    else if (sermon.audio_signed_url) loadSermon(sermon, seconds)
   }
 
   return (
@@ -205,17 +211,13 @@ export default function SermonPlayerPage() {
 
         {/* Progress bar */}
         <div className="space-y-1.5">
-          <div
-            className="h-1.5 bg-spirit-700 rounded-full cursor-pointer group relative"
-            onClick={handleSeekClick}
-          >
-            <div
-              className="h-full bg-accent-500 rounded-full transition-all duration-100 relative"
-              style={{ width: `${effectiveProgress * 100}%` }}
-            >
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-accent-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
-          </div>
+          <SeekBar
+            currentTime={effectiveTime}
+            duration={effectiveDuration}
+            onSeek={handleSeek}
+            disabled={!sermon.audio_signed_url}
+            className="h-6 items-center rounded-full"
+          />
           <div className="flex justify-between text-xs font-mono text-spirit-500">
             <span>{formatTime(effectiveTime)}</span>
             <span>{formatTime(effectiveDuration)}</span>
@@ -271,16 +273,26 @@ export default function SermonPlayerPage() {
 
         {/* Volume */}
         <div className="flex items-center gap-3">
-          <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-spirit-500 shrink-0" stroke="currentColor" strokeWidth={1.8}>
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-            {volume > 0 && <path d="M15.54 8.46a5 5 0 0 1 0 7.07" strokeLinecap="round" />}
-            {volume > 0.5 && <path d="M19.07 4.93a10 10 0 0 1 0 14.14" strokeLinecap="round" />}
-          </svg>
-          <input
-            type="range" min={0} max={1} step={0.05} value={volume}
-            onChange={(e) => changeVolume(parseFloat(e.target.value))}
-            className="flex-1 accent-accent-500 h-1 cursor-pointer"
-          />
+          <button
+            type="button"
+            onClick={toggleMute}
+            aria-label={muted ? 'Unmute' : 'Mute'}
+            aria-pressed={muted}
+            className="focus-ring rounded-lg w-8 h-8 -ml-2 flex items-center justify-center text-spirit-500 hover:text-spirit-100 transition-colors shrink-0"
+          >
+            <VolumeIcon className="w-4 h-4" />
+          </button>
+          {volumeControllable ? (
+            <input
+              type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
+              onChange={(e) => changeVolume(parseFloat(e.target.value))}
+              aria-label="Volume"
+              className="flex-1 accent-accent-500 h-6 cursor-pointer"
+            />
+          ) : (
+            // iOS only allows volume via the hardware buttons
+            <p className="text-spirit-500 text-xs">Use your device&apos;s volume buttons to adjust volume</p>
+          )}
         </div>
       </div>
 

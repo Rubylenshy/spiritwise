@@ -3,10 +3,16 @@ import { Link, useNavigate } from 'react-router-dom'
 import { AudioWaveform, Check, Loader2, Sparkles } from 'lucide-react'
 import VideoBackground from '../../components/VideoBackground'
 import ThemeToggle from '../../components/ThemeToggle'
+import { PasswordInput } from '../../components/ui'
 import api from '../../lib/axios'
+import { USERNAME_PATTERN, isValidEmail, normalizeEmail, normalizeUsername } from '../../lib/validators'
 import useAuthStore from '../../store/authStore'
 
 const STEPS = ['Account', 'Profile', 'Done']
+
+function FieldError({ message }) {
+  return message ? <p className="text-flame-400 text-xs mt-1">{message}</p> : null
+}
 
 export default function SignUpPage() {
   const [step, setStep] = useState(0)
@@ -25,16 +31,19 @@ export default function SignUpPage() {
   const navigate = useNavigate()
 
   const handleChange = (e) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
-    setErrors((prev) => ({ ...prev, [e.target.name]: '' }))
+    const { name } = e.target
+    const value = name === 'username' ? normalizeUsername(e.target.value) : e.target.value
+    setForm((prev) => ({ ...prev, [name]: value }))
+    setErrors((prev) => ({ ...prev, [name]: '' }))
   }
 
   const validateStep0 = () => {
     const errs = {}
     if (!form.username.trim()) errs.username = 'Username is required.'
     else if (form.username.length < 3) errs.username = 'Must be at least 3 characters.'
+    else if (!USERNAME_PATTERN.test(form.username)) errs.username = 'Use only letters, numbers and @ . + - _'
     if (!form.email.trim()) errs.email = 'Email is required.'
-    else if (!/\S+@\S+\.\S+/.test(form.email)) errs.email = 'Enter a valid email.'
+    else if (!isValidEmail(form.email)) errs.email = 'Enter a valid email address, e.g. you@example.com.'
     if (!form.password) errs.password = 'Password is required.'
     else if (form.password.length < 8) errs.password = 'Must be at least 8 characters.'
     if (form.password !== form.confirm_password) errs.confirm_password = 'Passwords do not match.'
@@ -54,8 +63,8 @@ export default function SignUpPage() {
     setLoading(true)
     try {
       const { data } = await api.post('/auth/register/', {
-        username: form.username,
-        email: form.email,
+        username: normalizeUsername(form.username),
+        email: normalizeEmail(form.email),
         password: form.password,
         confirm_password: form.confirm_password,
         first_name: form.first_name,
@@ -76,11 +85,6 @@ export default function SignUpPage() {
       setLoading(false)
     }
   }
-
-  const FieldError = ({ name }) =>
-    errors[name] ? (
-      <p className="text-flame-400 text-xs mt-1">{errors[name]}</p>
-    ) : null
 
   return (
     <div className="isolate relative min-h-screen flex items-center justify-center p-6">
@@ -126,26 +130,26 @@ export default function SignUpPage() {
 
               <div className="space-y-1.5">
                 <label className="label" htmlFor="username">Username</label>
-                <input id="username" name="username" type="text" value={form.username} onChange={handleChange} className="input-field" placeholder="faithful_reader" />
-                <FieldError name="username" />
+                <input id="username" name="username" type="text" autoComplete="username" autoCapitalize="none" spellCheck={false} value={form.username} onChange={handleChange} className="input-field" placeholder="faithful_reader" />
+                <FieldError message={errors.username} />
               </div>
 
               <div className="space-y-1.5">
                 <label className="label" htmlFor="email">Email</label>
-                <input id="email" name="email" type="email" value={form.email} onChange={handleChange} className="input-field" placeholder="you@example.com" />
-                <FieldError name="email" />
+                <input id="email" name="email" type="email" autoComplete="email" autoCapitalize="none" spellCheck={false} value={form.email} onChange={handleChange} className="input-field" placeholder="you@example.com" />
+                <FieldError message={errors.email} />
               </div>
 
               <div className="space-y-1.5">
                 <label className="label" htmlFor="password">Password</label>
-                <input id="password" name="password" type="password" value={form.password} onChange={handleChange} className="input-field" placeholder="Min. 8 characters" />
-                <FieldError name="password" />
+                <PasswordInput id="password" name="password" autoComplete="new-password" value={form.password} onChange={handleChange} placeholder="Min. 8 characters" />
+                <FieldError message={errors.password} />
               </div>
 
               <div className="space-y-1.5">
                 <label className="label" htmlFor="confirm_password">Confirm password</label>
-                <input id="confirm_password" name="confirm_password" type="password" value={form.confirm_password} onChange={handleChange} className="input-field" placeholder="Enter password again" />
-                <FieldError name="confirm_password" />
+                <PasswordInput id="confirm_password" name="confirm_password" autoComplete="new-password" value={form.confirm_password} onChange={handleChange} placeholder="Enter password again" />
+                <FieldError message={errors.confirm_password} />
               </div>
 
               <button onClick={handleNext} className="btn-primary w-full">Continue</button>
