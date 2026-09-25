@@ -2,13 +2,8 @@ import { Link, useLocation } from 'react-router-dom'
 import { AudioWaveform, Loader2, Maximize2, Pause, Play, RotateCcw, RotateCw } from 'lucide-react'
 import { useAudio } from '../../context/AudioContext'
 import SeekBar from '../SeekBar'
-
-function formatTime(seconds) {
-  if (!seconds || isNaN(seconds)) return '0:00'
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
+import { FavoriteButton } from '../SermonRow'
+import { formatDuration } from '../../lib/format'
 
 function Waveform({ playing }) {
   return (
@@ -104,11 +99,13 @@ export default function FloatingPlayer() {
         {/* Time */}
         {hasSermon && (
           <div className="hidden sm:flex items-center gap-1 text-xs font-mono text-spirit-500 shrink-0">
-            <span>{formatTime(currentTime)}</span>
+            <span>{formatDuration(currentTime)}</span>
             <span className="text-spirit-700">/</span>
-            <span>{formatTime(duration)}</span>
+            <span>{formatDuration(duration)}</span>
           </div>
         )}
+
+        {hasSermon && <FavoriteButton sermon={currentSermon} className="w-8 h-8" />}
 
         {/* Controls */}
         <div className="flex items-center gap-1 shrink-0">

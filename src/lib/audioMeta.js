@@ -74,21 +74,27 @@ async function readTags(file) {
     return {
       title: common.title?.trim() ?? '',
       speaker: common.artist?.trim() ?? '',
+      // The album names the series the sermon belongs to.
+      album: common.album?.trim() ?? '',
       // Year-only tags aren't useful for a sermon date.
       date: /^\d{4}-\d{2}-\d{2}$/.test(tagDate) ? tagDate : '',
     }
   } catch {
-    return { title: '', speaker: '', date: '' }
+    return { title: '', speaker: '', album: '', date: '' }
   }
 }
 
-/** Best-guess { title, speaker, date } for an audio file: tags first, filename as fallback. */
+/**
+ * Best-guess { title, speaker, album, date } for an audio file: tags first,
+ * filename as fallback (album comes from tags only).
+ */
 export async function detectAudioMeta(file) {
   const fromName = parseFilename(file.name)
   const tags = await readTags(file)
   return {
     title: tags.title || fromName.title,
     speaker: tags.speaker || fromName.speaker,
+    album: tags.album,
     date: tags.date || fromName.date,
   }
 }

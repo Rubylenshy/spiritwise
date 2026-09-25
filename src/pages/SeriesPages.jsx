@@ -1,7 +1,8 @@
 import { Link, useParams } from 'react-router-dom'
 import { AudioWaveform } from 'lucide-react'
-import { useSeries, useSeriesDetail } from '../hooks/useSermons'
-import { PageLoader, ErrorState, EmptyState, TagPill } from '../components/ui'
+import { useSeries, useSeriesDetail, useSermonsInfinite } from '../hooks/useSermons'
+import { PageLoader, ErrorState, EmptyState } from '../components/ui'
+import { LoadMore, SermonRow } from '../components/SermonRow'
 
 function SeriesCard({ series }) {
   return (
@@ -45,6 +46,7 @@ export function SeriesListPage() {
 export function SeriesDetailPage() {
   const { id } = useParams()
   const { data, isLoading, error, refetch } = useSeriesDetail(id)
+  const sermons = useSermonsInfinite({ series: id })
 
   if (isLoading) return <PageLoader />
   if (error) return <ErrorState message="Could not load this series." onRetry={refetch} />
@@ -60,26 +62,18 @@ export function SeriesDetailPage() {
       <div className="card p-6 space-y-2">
         <h2 className="font-display text-2xl text-spirit-100">{data.title}</h2>
         {data.description && <p className="text-spirit-400 text-sm leading-relaxed">{data.description}</p>}
-        <p className="text-spirit-500 text-xs">{data.sermon_count} sermons</p>
+        <p className="text-spirit-500 text-xs">{data.sermon_count} sermon{data.sermon_count !== 1 ? 's' : ''}</p>
       </div>
 
-      <div className="space-y-2">
-        {(data.sermons ?? []).map((sermon) => (
-          <Link key={sermon.id} to={`/sermons/${sermon.id}`} className="card-hover px-5 py-4 flex items-center gap-4 group">
-            <div className="w-9 h-9 rounded-full bg-spirit-700 border border-spirit-600 flex items-center justify-center shrink-0 group-hover:bg-accent-500 group-hover:border-accent-400 transition-all">
-              <svg viewBox="0 0 24 24" className="w-4 h-4 group-hover:text-white text-accent-400 transition-colors" fill="currentColor">
-                <polygon points="5 3 19 12 5 21 5 3" />
-              </svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-spirit-100 font-medium text-sm truncate">{sermon.title}</p>
-              <p className="text-spirit-400 text-xs mt-0.5">{sermon.speaker}</p>
-            </div>
-            {sermon.tags?.[0] && <TagPill tag={sermon.tags[0]} />}
-            <span className="text-spirit-500 text-xs font-mono shrink-0">{sermon.duration_display}</span>
-          </Link>
-        ))}
-      </div>
+      {sermons.isLoading ? <PageLoader />
+        : sermons.error ? <ErrorState message="Could not load this series' sermons." onRetry={sermons.refetch} />
+        : !sermons.items.length ? <EmptyState title="No sermons in this series yet" />
+        : (
+          <div className="space-y-2">
+            {sermons.items.map((sermon) => <SermonRow key={sermon.id} sermon={sermon} showSeries={false} />)}
+            <LoadMore query={sermons} />
+          </div>
+        )}
     </div>
   )
 }

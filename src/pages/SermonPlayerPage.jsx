@@ -5,13 +5,8 @@ import { useSermon, useSubmitAnswer } from '../hooks/useSermons'
 import { useAudio } from '../context/AudioContext'
 import { PageLoader, ErrorState, Spinner } from '../components/ui'
 import SeekBar from '../components/SeekBar'
-
-function formatTime(seconds) {
-  if (!seconds || isNaN(seconds)) return '0:00'
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
+import { AddToPlaylistButton, FavoriteButton } from '../components/SermonRow'
+import { formatDuration } from '../lib/format'
 
 function ReflectionQuestion({ question, sermonId, index }) {
   const [answer, setAnswer] = useState('')
@@ -79,7 +74,7 @@ function NextSermonCard({ nextSermon }) {
       <div className="flex-1 min-w-0">
         <p className="label mb-0.5">Up next in series</p>
         <p className="text-spirit-100 font-medium text-sm truncate">{nextSermon.title}</p>
-        <p className="text-spirit-400 text-xs">{nextSermon.speaker} · {nextSermon.duration_display}</p>
+        <p className="text-spirit-400 text-xs">{nextSermon.speaker} · {formatDuration(nextSermon.duration_seconds)}</p>
       </div>
       <Link to={`/sermons/${nextSermon.id}`} className="btn-primary text-sm shrink-0">
         Play →
@@ -168,8 +163,9 @@ export default function SermonPlayerPage() {
         <span className="text-spirit-400 truncate max-w-[180px]">{sermon.title}</span>
       </div>
 
-      {/* Player card */}
-      <div className="card p-4 sm:p-8 space-y-6">
+      {/* Player card — raised while its playlist popover has focus, so the
+          cards below (own stacking contexts via backdrop-blur) can't cover it */}
+      <div className="card relative focus-within:z-20 p-4 sm:p-8 space-y-6">
         {/* Artwork */}
         <div className="w-24 h-24 rounded-2xl bg-spirit-700 border border-spirit-600 flex items-center justify-center mx-auto overflow-hidden">
           {sermon.thumbnail
@@ -189,6 +185,10 @@ export default function SermonPlayerPage() {
           {sermon.scripture_reference && (
             <p className="text-accent-500/70 text-xs mt-1 italic">{sermon.scripture_reference}</p>
           )}
+          <div className="flex items-center justify-center gap-1 mt-3">
+            <FavoriteButton sermon={sermon} />
+            <AddToPlaylistButton sermon={sermon} align="left" />
+          </div>
         </div>
 
         {!sermon.audio_signed_url && (
@@ -207,8 +207,8 @@ export default function SermonPlayerPage() {
             className="h-6 items-center rounded-full"
           />
           <div className="flex justify-between text-xs font-mono text-spirit-500">
-            <span>{formatTime(effectiveTime)}</span>
-            <span>{formatTime(effectiveDuration)}</span>
+            <span>{formatDuration(effectiveTime)}</span>
+            <span>{formatDuration(effectiveDuration)}</span>
           </div>
         </div>
 

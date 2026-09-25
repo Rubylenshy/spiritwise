@@ -483,8 +483,8 @@ function ResultsPanel({ results, isLoading, isAiLoading }) {
         </div>
       )}
 
-      {/* Standard loading skeleton */}
-      {isLoading && !isAiLoading && <BibleVerseCard loading />}
+      {/* Placeholder for the passage on its way — shown for every lookup */}
+      {isLoading && <BibleVerseCard loading />}
 
       {results.map((r, i) => (
         <ResultCard key={`${r.reference}-${i}`} initial={r} />
@@ -917,9 +917,6 @@ export default function WordLookUpPage() {
         <FileFallback onTranscript={setDisplayTranscript} />
       )}
 
-      {/* ── Manual phrase search ─────────────────────────────────────────────── */}
-      <PhraseSearchBox onSearch={handleManualSearch} loading={lookingUp} />
-
       {/* ── Transcript ───────────────────────────────────────────────────────── */}
       <HighlightedTranscript
         transcript={displayTranscript}
@@ -950,12 +947,8 @@ export default function WordLookUpPage() {
         </div>
       )}
 
-      {/* ── Lookup error ─────────────────────────────────────────────────────── */}
-      {lookupError && (
-        <p className="text-flame-400 text-sm bg-flame-500/10 border border-flame-500/20 rounded-xl px-4 py-3">
-          {lookupError}
-        </p>
-      )}
+      {/* ── Manual phrase search ─────────────────────────────────────────────── */}
+      <PhraseSearchBox onSearch={handleManualSearch} loading={lookingUp} />
 
       {/* ── Results ──────────────────────────────────────────────────────────── */}
       <div className="space-y-3">
@@ -972,7 +965,12 @@ export default function WordLookUpPage() {
             </button>
           )}
         </div>
-        <ResultsPanel results={results} isLoading={lookingUp && !isAiLookup} isAiLoading={isAiLookup} />
+        {lookupError && (
+          <p className="text-flame-400 text-sm bg-flame-500/10 border border-flame-500/20 rounded-xl px-4 py-3">
+            {lookupError}
+          </p>
+        )}
+        <ResultsPanel results={results} isLoading={lookingUp} isAiLoading={isAiLookup} />
       </div>
 
       {/* ── Lookup history (WL3 — full paginated panel) ───────────────────────── */}

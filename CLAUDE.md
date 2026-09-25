@@ -20,7 +20,7 @@ npm run lint        # eslint . --ext js,jsx --report-unused-disable-directives -
 
 There is no test runner configured in this repo.
 
-Environment: `VITE_API_BASE_URL` is the backend **origin**, without a trailing `/api` (see `.env.example`). `src/lib/config.js` derives `API_BASE_URL` (`${origin}/api`) and `ADMIN_URL` from it; leaving it unset yields relative URLs that ride the dev proxy. Set it for any build served without that proxy (Vercel, `npm run preview`) — it is inlined at build time, so it must exist in the build environment. Never hardcode a backend URL; import from `src/lib/config.js`.
+Environment: `VITE_API_BASE_URL` is the backend **origin**, without a trailing `/api` (see `.env.example`). `src/lib/config.js` derives `API_BASE_URL` (`${origin}/api`) and `ADMIN_URL` from it. **Leave it unset** in dev and on Vercel: URLs stay relative and ride the Vite proxy in dev and the `vercel.json` rewrites (`/api`, `/admin`, `/static` → Fly) in production. Cookie auth depends on `/api` being same-origin (see Auth). Never hardcode a backend URL; import from `src/lib/config.js`.
 
 ## Git
 
@@ -28,9 +28,9 @@ Never add a `Co-Authored-By: Claude …` trailer or any other Claude/AI attribut
 
 ## Architecture
 
-**Routing (`src/App.jsx`)** — Two route trees share `RootLayout` under `ProtectedRoute`: `/home` and everything else (`/sermons`, `/series`, `/leaderboard`, `/profile`, `/import`, `/wordlookup`). `/`, `/login`, `/signup` are public; `/` renders the marketing `LandingPage` (own layout, no sidebar/player). Unmatched paths redirect to `/`.
+**Routing (`src/App.jsx`)** — Two route trees share `RootLayout` under `ProtectedRoute`: `/home` and everything else (`/sermons`, `/series`, `/library`, `/library/playlists/:id`, `/leaderboard`, `/profile`, `/import`, `/wordlookup`). `/`, `/login`, `/signup` are public; `/` renders the marketing `LandingPage` (own layout, no sidebar/player). Unmatched paths redirect to `/`.
 
-**Auth** — `src/store/authStore.js` is a Zustand store (persisted to localStorage under key `spiritwise-auth`) holding `user`, `accessToken`, `refreshToken`, `isAuthenticated`. `src/lib/axios.js` wraps a single `api` axios instance (`baseURL: /api`): a request interceptor attaches the bearer token, a response interceptor auto-refreshes on 401 (queuing concurrent requests during refresh) and force-logs-out + redirects to `/login` if refresh fails. `useAuthSync` (`src/hooks/useAuthSync.js`), called once from `RootLayout`, fetches `/auth/me/` on mount to hydrate fresh user fields (xp, streak, badges) into the store.
+**Auth** — tokens never touch localStorage. The backend sets the refresh token as an httpOnly `SameSite=Strict` cookie on `/api/auth/` and returns only `{ access, user }`. `src/store/authStore.js` is a Zustand store (persisted under `spiritwise-auth`) that persists only `user`, `isAuthenticated` (a hint for instant render) and `lastUsername`; `accessToken` lives in memory. `src/lib/axios.js` wraps a single `api` axios instance (`baseURL: /api`): `refreshAccessToken()` posts to `/auth/token/refresh/` (the cookie rides along) with one shared in-flight promise, since each refresh rotates the cookie. The request interceptor mints an access token first when there is none (after a reload); the response interceptor refreshes once on 401, and a rejected cookie logs out + redirects to `/login`. Sign out with `useSignOut()` (`src/hooks/useSignOut.js`) — it revokes the cookie server-side and clears the query cache. Login accepts a username or an email. `useAuthSync` (`src/hooks/useAuthSync.js`), called once from `RootLayout`, fetches `/auth/me/` on mount to hydrate fresh user fields (xp, streak, badges) into the store.
 
 **Server state** — TanStack Query. All query/mutation hooks live centrally in `src/hooks/useSermons.js` (sermons, series, tags, progress, engagement stats, leaderboard, answers, badges) with query keys under the `KEYS` object — add new server-state hooks here rather than inlining `useQuery` in page components. Never invalidate the sermon detail query while it's playing (a new `audio_signed_url` would reset playback).
 
@@ -46,7 +46,9 @@ Never add a `Co-Authored-By: Claude …` trailer or any other Claude/AI attribut
 
 **Landing page** — `src/pages/landing/` is a self-contained marketing page tree (`LandingPage.jsx` + `components/*Section.jsx`) with its own nav/footer, deliberately not sharing `RootLayout`.
 
-**Shared UI** — `src/components/ui.jsx` holds small cross-page primitives (`Spinner`, `PageLoader`, `ErrorState`, `EmptyState`, `TagPill`, `PasswordInput`). Prefer reusing these over rebuilding loading/error/empty states per page.
+**Library (favorites, playlists, speakers)** — `src/pages/LibraryPages.jsx`. Server state is per-user under `/api/library/`; hooks are in `useSermons.js`. Favorite toggles are optimistic and patch every cached copy of the sermon in place (`patchCachedSermon`) instead of invalidating, so the playing sermon's detail query is never refetched; hearts read `useIsFavorited()` so the global player's snapshot stays in sync too. Paged "Load more" lists use `usePagedList` (DRF page-number pagination); `/sermons` keeps numbered pages.
+
+**Shared UI** — `src/components/ui.jsx` holds small cross-page primitives (`Spinner`, `PageLoader`, `ErrorState`, `EmptyState`, `TagPill`, `PasswordInput`). `src/components/SermonRow.jsx` is the sermon list row (link + `FavoriteButton` + `AddToPlaylistButton`) plus `LoadMore`. `src/lib/format.js` has `formatDuration` (`m:ss`, `h:mm:ss` from an hour up — use it for every duration/time, not the API's `duration_display`) and `greetingFor`. Prefer reusing these over rebuilding loading/error/empty states or rows per page.
 
 ## Styling conventions
 

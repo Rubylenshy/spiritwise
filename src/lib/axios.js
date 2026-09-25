@@ -7,81 +7,79 @@ const api = axios.create({
     headers: { 'Content-Type': 'application/json' },
 })
 
-// --- Request interceptor: attach access token ---
-api.interceptors.request.use(
-    (config) => {
-        const token = useAuthStore.getState().getAccessToken()
-        if (token) config.headers.Authorization = `Bearer ${token}`
-        return config
-    },
-    (error) => Promise.reject(error)
-)
+// Endpoints that authenticate by credentials or the refresh cookie, never the bearer token.
+const COOKIE_AUTH_PATHS = ['/auth/login/', '/auth/register/', '/auth/token/refresh/', '/auth/logout/']
+const isCookieAuthPath = (url = '') => COOKIE_AUTH_PATHS.some((p) => url.includes(p))
 
-// --- Response interceptor: auto-refresh on 401 ---
-let isRefreshing = false
-let failedQueue = []
-
-const processQueue = (error, token = null) => {
-    failedQueue.forEach((prom) => {
-        if (error) prom.reject(error)
-        else prom.resolve(token)
-    })
-    failedQueue = []
+function endSession() {
+    useAuthStore.getState().logout()
+    if (window.location.pathname !== '/login') window.location.href = '/login'
 }
 
+// --- Access-token refresh ---
+// The refresh token is an httpOnly cookie the browser sends to /api/auth/ on
+// its own. Concurrent callers share one in-flight request, because each
+// refresh rotates the cookie and a second call with the old one would fail.
+let refreshing = null
+
+export function refreshAccessToken() {
+    refreshing ??= axios
+        // bare axios, not `api` — the interceptors must not re-enter on this call
+        .post(`${API_BASE_URL}/auth/token/refresh/`, null, { withCredentials: true })
+        .then(({ data }) => {
+            useAuthStore.getState().setAccessToken(data.access)
+            return data.access
+        })
+        .catch((err) => {
+            // Only a rejected cookie ends the session; a network blip shouldn't log anyone out.
+            if (err.response?.status === 401) endSession()
+            throw err
+        })
+        .finally(() => { refreshing = null })
+    return refreshing
+}
+
+// --- Request interceptor: attach access token ---
+// After a reload the store has no access token yet, so mint one before the
+// first request instead of letting it 401.
+api.interceptors.request.use(async (config) => {
+    if (isCookieAuthPath(config.url)) return config
+    const { isAuthenticated, getAccessToken } = useAuthStore.getState()
+    let token = getAccessToken()
+    if (!token && isAuthenticated) token = await refreshAccessToken()
+    if (token) config.headers.Authorization = `Bearer ${token}`
+    return config
+})
+
+// --- Response interceptor: refresh once on 401, then retry ---
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config
 
-        const isAuthEndpoint = originalRequest.url?.includes('/auth/login/') ||
-            originalRequest.url?.includes('/auth/register/')
-
-        if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
-            if (isRefreshing) {
-                return new Promise((resolve, reject) => {
-                    failedQueue.push({ resolve, reject })
-                })
-                    .then((token) => {
-                        originalRequest.headers.Authorization = `Bearer ${token}`
-                        return api(originalRequest)
-                    })
-                    .catch((err) => Promise.reject(err))
-            }
-
+        if (
+            error.response?.status === 401 &&
+            originalRequest &&
+            !originalRequest._retry &&
+            !isCookieAuthPath(originalRequest.url) &&
+            useAuthStore.getState().isAuthenticated
+        ) {
             originalRequest._retry = true
-            isRefreshing = true
-
-            const refreshToken = useAuthStore.getState().getRefreshToken()
-
-            if (!refreshToken) {
-                useAuthStore.getState().logout()
-                window.location.href = '/login'
-                return Promise.reject(error)
-            }
-
-            try {
-                // bare axios, not `api` — the interceptors must not re-enter on this call
-                const { data } = await axios.post(`${API_BASE_URL}/auth/token/refresh/`, {
-                    refresh: refreshToken,
-                })
-                const newAccess = data.access
-                useAuthStore.getState().setTokens({ accessToken: newAccess, refreshToken })
-                api.defaults.headers.common.Authorization = `Bearer ${newAccess}`
-                processQueue(null, newAccess)
-                return api(originalRequest)
-            } catch (refreshError) {
-                processQueue(refreshError, null)
-                useAuthStore.getState().logout()
-                window.location.href = '/login'
-                return Promise.reject(refreshError)
-            } finally {
-                isRefreshing = false
-            }
+            const token = await refreshAccessToken()
+            originalRequest.headers.Authorization = `Bearer ${token}`
+            return api(originalRequest)
         }
 
         return Promise.reject(error)
     }
 )
+
+/**
+ * Revoke the refresh cookie server-side. Fire-and-forget: the caller clears
+ * local state straight away whether or not this reaches the server.
+ */
+export function revokeSession() {
+    axios.post(`${API_BASE_URL}/auth/logout/`, null, { withCredentials: true }).catch(() => {})
+}
 
 export default api

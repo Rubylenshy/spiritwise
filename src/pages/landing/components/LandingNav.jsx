@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight, AudioWaveform, ChevronDown, ChevronRight, Flame, LayoutDashboard,
   LogOut, Menu, ScanSearch, Sparkles, User, X,
 } from 'lucide-react'
 import useAuthStore from '../../../store/authStore'
+import { useSignOut } from '../../../hooks/useSignOut'
+import { useDismiss } from '../../../hooks/useDismiss'
 import ThemeToggle from '../../../components/ThemeToggle'
 import UserAvatar from '../../../components/UserAvatar'
 
@@ -19,25 +21,6 @@ const navLinkClass =
 
 function displayName(user) {
   return user?.first_name || user?.username || 'Friend'
-}
-
-/** Closes `open` state when clicking outside `ref` or pressing Escape. */
-function useDismiss(ref, open, onClose) {
-  useEffect(() => {
-    if (!open) return
-    const onPointer = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) onClose()
-    }
-    const onKey = (e) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('mousedown', onPointer)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onPointer)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [ref, open, onClose])
 }
 
 function Dropdown({ open, align = 'center', className = '', children }) {
@@ -150,7 +133,7 @@ export default function LandingNav() {
   const productRef = useRef(null)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const user = useAuthStore((s) => s.user)
-  const logout = useAuthStore((s) => s.logout)
+  const signOutUser = useSignOut()
 
   useDismiss(productRef, productOpen, () => setProductOpen(false))
 
@@ -161,7 +144,7 @@ export default function LandingNav() {
 
   const signOut = () => {
     setMobileOpen(false)
-    logout()
+    signOutUser()
   }
 
   return (

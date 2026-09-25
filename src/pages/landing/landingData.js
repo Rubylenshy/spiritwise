@@ -30,8 +30,5 @@ export const DEMO_SERIES = {
   preview: DEMO_SERMONS.slice(0, 3),
 }
 
-export function formatTime(seconds) {
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  return `${m}:${String(s).padStart(2, '0')}`
-}
+// Same formatting as the app's player (m:ss, h:mm:ss from an hour up).
+export { formatDuration as formatTime } from '../../lib/format'

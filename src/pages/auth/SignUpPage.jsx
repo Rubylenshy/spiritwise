@@ -70,7 +70,7 @@ export default function SignUpPage() {
         first_name: form.first_name,
         last_name: form.last_name,
       })
-      setAuth({ user: data.user, accessToken: data.access, refreshToken: data.refresh })
+      setAuth({ user: data.user, accessToken: data.access, lastUsername: data.user.username })
       setStep(2)
       setTimeout(() => navigate('/'), 1500)
     } catch (err) {

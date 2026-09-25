@@ -1,40 +1,10 @@
 import { useState, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
+import { X } from 'lucide-react'
 import { useSermons, useTags } from '../hooks/useSermons'
 import { useDebounce } from '../hooks/useDebounce'
 import { PageLoader, ErrorState, EmptyState, TagPill } from '../components/ui'
-
-function SermonRow({ sermon }) {
-  const tag = sermon.tags?.[0]
-
-  return (
-    <Link to={`/sermons/${sermon.id}`} className="card-hover px-5 py-4 flex items-center gap-4 group">
-      <div className="w-10 h-10 rounded-full bg-spirit-700 border border-spirit-600 flex items-center justify-center shrink-0 group-hover:bg-accent-500 group-hover:border-accent-400 transition-all duration-200">
-        <svg viewBox="0 0 24 24" className="w-4 h-4 group-hover:text-white text-accent-400 transition-colors" fill="currentColor">
-          <polygon points="5 3 19 12 5 21 5 3" />
-        </svg>
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <p className="text-spirit-100 font-medium text-sm truncate">{sermon.title}</p>
-        <p className="text-spirit-400 text-xs mt-0.5 truncate">{sermon.speaker} · {sermon.series_title}</p>
-        {sermon.scripture_reference && (
-          <p className="text-spirit-600 text-xs mt-0.5 italic">{sermon.scripture_reference}</p>
-        )}
-      </div>
-
-      {tag && (
-        <span className="hidden sm:block shrink-0">
-          <TagPill tag={tag} />
-        </span>
-      )}
-
-      <span className="text-spirit-500 text-xs font-mono shrink-0 w-12 text-right">
-        {sermon.duration_display}
-      </span>
-    </Link>
-  )
-}
+import { SermonRow } from '../components/SermonRow'
 
 function Pagination({ count, pageSize, currentPage, onPage }) {
   const totalPages = Math.ceil(count / pageSize)
@@ -67,6 +37,9 @@ export default function SermonLibraryPage() {
   const [query, setQuery] = useState('')
   const [activeTag, setActiveTag] = useState(null)
   const [page, setPage] = useState(1)
+  // ?speaker= comes from the Library's Speakers tab
+  const [searchParams, setSearchParams] = useSearchParams()
+  const speaker = searchParams.get('speaker') || null
 
   const PAGE_SIZE = 10
   const debouncedQuery = useDebounce(query, 400)
@@ -76,6 +49,7 @@ export default function SermonLibraryPage() {
   const { data, isLoading, error, refetch } = useSermons({
     q: debouncedQuery || undefined,
     tag: activeTag || undefined,
+    speaker: speaker || undefined,
     page,
     page_size: PAGE_SIZE,
   })
@@ -89,6 +63,11 @@ export default function SermonLibraryPage() {
     setActiveTag((prev) => prev === slug ? null : slug)
     setPage(1)
   }, [])
+
+  const clearSpeaker = () => {
+    setSearchParams({})
+    setPage(1)
+  }
 
   const tags = tagsData ?? []
   const sermons = data?.results ?? []
@@ -132,6 +111,22 @@ export default function SermonLibraryPage() {
               onClick={() => handleTag(tag.slug)}
             />
           ))}
+        </div>
+      )}
+
+      {speaker && (
+        <div className="flex items-center gap-2">
+          <span className="glass rounded-full pl-3 pr-1 py-1 text-xs text-spirit-200 flex items-center gap-1">
+            Speaker: <span className="font-medium">{speaker}</span>
+            <button
+              type="button"
+              onClick={clearSpeaker}
+              aria-label="Clear speaker filter"
+              className="focus-ring rounded-full p-1 text-spirit-500 hover:text-spirit-100 transition-colors"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </span>
         </div>
       )}
 

@@ -1,11 +1,5 @@
 import { useRef, useState } from 'react'
-
-function formatTime(seconds) {
-  if (!seconds || isNaN(seconds)) return '0:00'
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
+import { formatDuration } from '../lib/format'
 
 /**
  * Scrubbable progress bar for the audio player. Drag (mouse, touch or pen),
@@ -72,7 +66,7 @@ export default function SeekBar({
       aria-valuemin={0}
       aria-valuemax={Math.round(duration) || 0}
       aria-valuenow={Math.round(ratio * duration) || 0}
-      aria-valuetext={`${formatTime(ratio * duration)} of ${formatTime(duration)}`}
+      aria-valuetext={`${formatDuration(ratio * duration)} of ${formatDuration(duration)}`}
       aria-disabled={!canSeek}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
