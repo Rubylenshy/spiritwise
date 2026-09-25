@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Headphones, Home, Layers, Library, Trophy, User } from 'lucide-react'
+import { Headphones, Home, Layers, Library, Trophy } from 'lucide-react'
 
 // Mobile keeps a Profile tab — the sidebar's user card is off-screen in the drawer
 const TABS = [
@@ -8,7 +8,6 @@ const TABS = [
   { to: '/series', label: 'Series', Icon: Layers },
   { to: '/library', label: 'Library', Icon: Library },
   { to: '/leaderboard', label: 'Ranks', Icon: Trophy },
-  { to: '/profile', label: 'Profile', Icon: User },
 ]
 
 export default function BottomNav() {
