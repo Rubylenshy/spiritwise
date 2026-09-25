@@ -58,10 +58,9 @@ function ReflectionQuestion({ question, sermonId, index }) {
   )
 }
 
+// Renders from the `next_sermon` summary only — fetching its detail here would
+// count a play and mint a stream token before the user ever opens it.
 function NextSermonCard({ nextSermon }) {
-  const { loadSermon } = useAudio()
-  const { data: next } = useSermon(nextSermon?.id)
-
   if (!nextSermon) return null
   return (
     <div className="card p-5 flex items-center gap-4 animate-slide-up">
