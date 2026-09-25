@@ -7,9 +7,9 @@ const api = axios.create({
     headers: { 'Content-Type': 'application/json' },
 })
 
-// Endpoints that authenticate by credentials or the refresh cookie, never the bearer token.
-const COOKIE_AUTH_PATHS = ['/auth/login/', '/auth/register/', '/auth/token/refresh/', '/auth/logout/']
-const isCookieAuthPath = (url = '') => COOKIE_AUTH_PATHS.some((p) => url.includes(p))
+// Endpoints that authenticate by credentials or refresh token, never the bearer token.
+const TOKEN_AUTH_PATHS = ['/auth/login/', '/auth/register/', '/auth/token/refresh/', '/auth/logout/']
+const isTokenAuthPath = (url = '') => TOKEN_AUTH_PATHS.some((p) => url.includes(p))
 
 function endSession() {
     useAuthStore.getState().logout()
@@ -17,22 +17,30 @@ function endSession() {
 }
 
 // --- Access-token refresh ---
-// The refresh token is an httpOnly cookie the browser sends to /api/auth/ on
-// its own. Concurrent callers share one in-flight request, because each
-// refresh rotates the cookie and a second call with the old one would fail.
+// Concurrent callers share one in-flight request: each refresh rotates the
+// refresh token, and a second call with the old one would be rejected.
 let refreshing = null
 
-export function refreshAccessToken() {
+function refreshAccessToken() {
+    const refreshToken = useAuthStore.getState().getRefreshToken()
+    if (!refreshToken) {
+        endSession()
+        return Promise.reject(new Error('No refresh token'))
+    }
     refreshing ??= axios
         // bare axios, not `api` — the interceptors must not re-enter on this call
-        .post(`${API_BASE_URL}/auth/token/refresh/`, null, { withCredentials: true })
+        .post(`${API_BASE_URL}/auth/token/refresh/`, { refresh: refreshToken })
         .then(({ data }) => {
-            useAuthStore.getState().setAccessToken(data.access)
+            // ROTATE_REFRESH_TOKENS: keep the new refresh token, the old one is now blacklisted
+            useAuthStore.getState().setTokens({
+                accessToken: data.access,
+                refreshToken: data.refresh ?? refreshToken,
+            })
             return data.access
         })
         .catch((err) => {
-            // Only a rejected cookie ends the session; a network blip shouldn't log anyone out.
-            if (err.response?.status === 401) endSession()
+            // Only a rejected token ends the session; a network blip shouldn't log anyone out.
+            if (err.response?.status === 401 || err.response?.status === 400) endSession()
             throw err
         })
         .finally(() => { refreshing = null })
@@ -40,14 +48,9 @@ export function refreshAccessToken() {
 }
 
 // --- Request interceptor: attach access token ---
-// After a reload the store has no access token yet, so mint one before the
-// first request instead of letting it 401.
-api.interceptors.request.use(async (config) => {
-    if (isCookieAuthPath(config.url)) return config
-    const { isAuthenticated, getAccessToken } = useAuthStore.getState()
-    let token = getAccessToken()
-    if (!token && isAuthenticated) token = await refreshAccessToken()
-    if (token) config.headers.Authorization = `Bearer ${token}`
+api.interceptors.request.use((config) => {
+    const token = useAuthStore.getState().getAccessToken()
+    if (token && !isTokenAuthPath(config.url)) config.headers.Authorization = `Bearer ${token}`
     return config
 })
 
@@ -61,8 +64,7 @@ api.interceptors.response.use(
             error.response?.status === 401 &&
             originalRequest &&
             !originalRequest._retry &&
-            !isCookieAuthPath(originalRequest.url) &&
-            useAuthStore.getState().isAuthenticated
+            !isTokenAuthPath(originalRequest.url)
         ) {
             originalRequest._retry = true
             const token = await refreshAccessToken()
@@ -75,11 +77,13 @@ api.interceptors.response.use(
 )
 
 /**
- * Revoke the refresh cookie server-side. Fire-and-forget: the caller clears
+ * Blacklist the refresh token server-side. Fire-and-forget: the caller clears
  * local state straight away whether or not this reaches the server.
  */
 export function revokeSession() {
-    axios.post(`${API_BASE_URL}/auth/logout/`, null, { withCredentials: true }).catch(() => {})
+    const refresh = useAuthStore.getState().getRefreshToken()
+    if (!refresh) return
+    axios.post(`${API_BASE_URL}/auth/logout/`, { refresh }).catch(() => {})
 }
 
 export default api

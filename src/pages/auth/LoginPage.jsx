@@ -41,10 +41,10 @@ export default function LoginPage() {
         username: normalizeUsername(form.username),
         password: form.password,
       })
-      // The refresh token arrives as an httpOnly cookie, never in the body.
       setAuth({
         user: data.user,
         accessToken: data.access,
+        refreshToken: data.refresh,
         lastUsername: form.username.trim(),
       })
       navigate(from, { replace: true })
