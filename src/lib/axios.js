@@ -7,81 +7,83 @@ const api = axios.create({
     headers: { 'Content-Type': 'application/json' },
 })
 
-// --- Request interceptor: attach access token ---
-api.interceptors.request.use(
-    (config) => {
-        const token = useAuthStore.getState().getAccessToken()
-        if (token) config.headers.Authorization = `Bearer ${token}`
-        return config
-    },
-    (error) => Promise.reject(error)
-)
+// Endpoints that authenticate by credentials or refresh token, never the bearer token.
+const TOKEN_AUTH_PATHS = ['/auth/login/', '/auth/register/', '/auth/token/refresh/', '/auth/logout/']
+const isTokenAuthPath = (url = '') => TOKEN_AUTH_PATHS.some((p) => url.includes(p))
 
-// --- Response interceptor: auto-refresh on 401 ---
-let isRefreshing = false
-let failedQueue = []
-
-const processQueue = (error, token = null) => {
-    failedQueue.forEach((prom) => {
-        if (error) prom.reject(error)
-        else prom.resolve(token)
-    })
-    failedQueue = []
+function endSession() {
+    useAuthStore.getState().logout()
+    if (window.location.pathname !== '/login') window.location.href = '/login'
 }
 
+// --- Access-token refresh ---
+// Concurrent callers share one in-flight request: each refresh rotates the
+// refresh token, and a second call with the old one would be rejected.
+let refreshing = null
+
+function refreshAccessToken() {
+    const refreshToken = useAuthStore.getState().getRefreshToken()
+    if (!refreshToken) {
+        endSession()
+        return Promise.reject(new Error('No refresh token'))
+    }
+    refreshing ??= axios
+        // bare axios, not `api` — the interceptors must not re-enter on this call
+        .post(`${API_BASE_URL}/auth/token/refresh/`, { refresh: refreshToken })
+        .then(({ data }) => {
+            // ROTATE_REFRESH_TOKENS: keep the new refresh token, the old one is now blacklisted
+            useAuthStore.getState().setTokens({
+                accessToken: data.access,
+                refreshToken: data.refresh ?? refreshToken,
+            })
+            return data.access
+        })
+        .catch((err) => {
+            // Only a rejected token ends the session; a network blip shouldn't log anyone out.
+            if (err.response?.status === 401 || err.response?.status === 400) endSession()
+            throw err
+        })
+        .finally(() => { refreshing = null })
+    return refreshing
+}
+
+// --- Request interceptor: attach access token ---
+api.interceptors.request.use((config) => {
+    const token = useAuthStore.getState().getAccessToken()
+    if (token && !isTokenAuthPath(config.url)) config.headers.Authorization = `Bearer ${token}`
+    return config
+})
+
+// --- Response interceptor: refresh once on 401, then retry ---
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config
 
-        const isAuthEndpoint = originalRequest.url?.includes('/auth/login/') ||
-            originalRequest.url?.includes('/auth/register/')
-
-        if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
-            if (isRefreshing) {
-                return new Promise((resolve, reject) => {
-                    failedQueue.push({ resolve, reject })
-                })
-                    .then((token) => {
-                        originalRequest.headers.Authorization = `Bearer ${token}`
-                        return api(originalRequest)
-                    })
-                    .catch((err) => Promise.reject(err))
-            }
-
+        if (
+            error.response?.status === 401 &&
+            originalRequest &&
+            !originalRequest._retry &&
+            !isTokenAuthPath(originalRequest.url)
+        ) {
             originalRequest._retry = true
-            isRefreshing = true
-
-            const refreshToken = useAuthStore.getState().getRefreshToken()
-
-            if (!refreshToken) {
-                useAuthStore.getState().logout()
-                window.location.href = '/login'
-                return Promise.reject(error)
-            }
-
-            try {
-                // bare axios, not `api` — the interceptors must not re-enter on this call
-                const { data } = await axios.post(`${API_BASE_URL}/auth/token/refresh/`, {
-                    refresh: refreshToken,
-                })
-                const newAccess = data.access
-                useAuthStore.getState().setTokens({ accessToken: newAccess, refreshToken })
-                api.defaults.headers.common.Authorization = `Bearer ${newAccess}`
-                processQueue(null, newAccess)
-                return api(originalRequest)
-            } catch (refreshError) {
-                processQueue(refreshError, null)
-                useAuthStore.getState().logout()
-                window.location.href = '/login'
-                return Promise.reject(refreshError)
-            } finally {
-                isRefreshing = false
-            }
+            const token = await refreshAccessToken()
+            originalRequest.headers.Authorization = `Bearer ${token}`
+            return api(originalRequest)
         }
 
         return Promise.reject(error)
     }
 )
+
+/**
+ * Blacklist the refresh token server-side. Fire-and-forget: the caller clears
+ * local state straight away whether or not this reaches the server.
+ */
+export function revokeSession() {
+    const refresh = useAuthStore.getState().getRefreshToken()
+    if (!refresh) return
+    axios.post(`${API_BASE_URL}/auth/logout/`, { refresh }).catch(() => {})
+}
 
 export default api

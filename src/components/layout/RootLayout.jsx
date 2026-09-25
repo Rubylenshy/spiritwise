@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet, matchPath, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Navbar from './Navbar'
 import BottomNav from './BottomNav'
@@ -7,10 +7,12 @@ import FloatingPlayer from './FloatingPlayer'
 import VideoBackground from '../VideoBackground'
 import RewardToaster from '../RewardToaster'
 import { useAuthSync } from '../../hooks/useAuthSync'
+import { usePlaylist, useSeriesDetail } from '../../hooks/useSermons'
 
 const PAGE_TITLES = {
-  '/home': 'Good morning',
-  '/sermons': 'Sermon Library',
+  '/home': 'Home',
+  '/sermons': 'Sermons',
+  '/library': 'Library',
   '/series': 'Series',
   '/leaderboard': 'Leaderboard',
   '/profile': 'Your Profile',
@@ -25,10 +27,18 @@ export default function RootLayout() {
 
   const isPlayerPage = pathname.startsWith('/sermons/') && pathname !== '/sermons'
 
+  // Detail pages title the bar with the item's own name. These share the
+  // page's query cache, so they don't cost an extra request.
+  const seriesId = matchPath('/series/:id', pathname)?.params.id
+  const playlistId = matchPath('/library/playlists/:id', pathname)?.params.id
+  const { data: series } = useSeriesDetail(seriesId)
+  const { data: playlist } = usePlaylist(playlistId)
+
   const baseTitle =
     PAGE_TITLES[pathname] ??
     (isPlayerPage ? 'Now Playing'
-    : pathname.startsWith('/series/') ? 'Series'
+    : seriesId ? series?.title ?? 'Series'
+    : playlistId ? playlist?.name ?? 'Playlist'
     : 'SpiritWise')
 
   return (

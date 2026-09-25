@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { jwtStorage } from '../lib/jwtStorage'
 
 const useAuthStore = create(
   persist(
@@ -8,13 +9,14 @@ const useAuthStore = create(
       accessToken: null,
       refreshToken: null,
       isAuthenticated: false,
-      // Prefills the login form. Deliberately survives logout; never store the password.
+      // Prefills the login form with whatever was typed (username or email).
+      // Deliberately survives logout; never store the password.
       lastUsername: '',
 
-      setAuth: ({ user, accessToken, refreshToken }) =>
+      setAuth: ({ user, accessToken, refreshToken, lastUsername }) =>
         set({
           user, accessToken, refreshToken, isAuthenticated: true,
-          lastUsername: user?.username ?? get().lastUsername,
+          lastUsername: lastUsername ?? get().lastUsername,
         }),
 
       forgetLastUsername: () => set({ lastUsername: '' }),
@@ -32,6 +34,8 @@ const useAuthStore = create(
     }),
     {
       name: 'spiritwise-auth',
+      // Saved as a signed JWT rather than plain JSON — see lib/jwtStorage.js
+      storage: jwtStorage,
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,

@@ -21,6 +21,7 @@ import HomePage from './pages/HomePage'
 import SermonLibraryPage from './pages/SermonLibraryPage'
 import SermonPlayerPage from './pages/SermonPlayerPage'
 import { SeriesListPage, SeriesDetailPage } from './pages/SeriesPages'
+import { LibraryPage, PlaylistDetailPage } from './pages/LibraryPages'
 import LeaderboardPage from './pages/LeaderboardPage'
 import UserProfilePage from './pages/UserProfilePage'
 import CloudImportPage from './pages/CloudImportPage'
@@ -73,6 +74,8 @@ export default function App() {
                 <Route path="sermons/:id" element={<SermonPlayerPage />} />
                 <Route path="series" element={<SeriesListPage />} />
                 <Route path="series/:id" element={<SeriesDetailPage />} />
+                <Route path="library" element={<LibraryPage />} />
+                <Route path="library/playlists/:id" element={<PlaylistDetailPage />} />
                 <Route path="leaderboard" element={<LeaderboardPage />} />
                 <Route path="profile" element={<UserProfilePage />} />
                 <Route path="import" element={<AdminRoute><CloudImportPage /></AdminRoute>} />

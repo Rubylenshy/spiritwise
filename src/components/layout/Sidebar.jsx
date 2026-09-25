@@ -1,15 +1,17 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  AudioWaveform, ChevronRight, Home, Layers, Library, LogOut, ScanSearch, Trophy, Upload, X,
+  AudioWaveform, ChevronRight, Headphones, Home, Layers, Library, LogOut, ScanSearch, Trophy, Upload, X,
 } from 'lucide-react'
 import useAuthStore from '../../store/authStore'
+import { useSignOut } from '../../hooks/useSignOut'
 import UserAvatar from '../UserAvatar'
 
 // Profile isn't listed here — it's reached from the user card at the bottom
 const NAV = [
   { label: 'Home', to: '/home', Icon: Home },
-  { label: 'Sermons', to: '/sermons', Icon: Library },
+  { label: 'Sermons', to: '/sermons', Icon: Headphones },
   { label: 'Series', to: '/series', Icon: Layers },
+  { label: 'Library', to: '/library', Icon: Library },
   { label: 'Leaderboard', to: '/leaderboard', Icon: Trophy },
 ]
 
@@ -60,7 +62,7 @@ function SectionLabel({ children }) {
 }
 
 export default function Sidebar({ onClose }) {
-  const logout = useAuthStore((s) => s.logout)
+  const signOut = useSignOut()
   const user = useAuthStore((s) => s.user)
   const navigate = useNavigate()
 
@@ -70,7 +72,7 @@ export default function Sidebar({ onClose }) {
     : user?.username ?? 'User'
 
   const handleLogout = () => {
-    logout()
+    signOut()
     navigate('/login')
   }
 

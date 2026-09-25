@@ -189,8 +189,40 @@ function FormatGuide() {
 const uploadErrorMessage = (err, fallback) =>
   err.response?.data?.detail ?? (err.response ? fallback : 'Network error — the upload did not complete.')
 
+/**
+ * Series picker: type to filter existing series, or type a new name to create
+ * it on upload. Sends a title (sermon_series_title) — the backend matches it
+ * case-insensitively and creates the series only when nothing matches.
+ */
+function SeriesField({ id, value, onChange, disabled, placeholder = 'None' }) {
+  const { data: seriesData } = useSeries({ all: true })
+  const typed = value.trim().toLowerCase()
+  const isNew = typed && !(seriesData ?? []).some(s => s.title.toLowerCase() === typed)
+
+  return (
+    <div className="space-y-1.5">
+      <label className="label" htmlFor={id}>Series</label>
+      <input
+        id={id}
+        type="text"
+        list={`${id}_options`}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        disabled={disabled}
+        maxLength={200}
+        autoComplete="off"
+        className="input-field"
+        placeholder={placeholder}
+      />
+      <datalist id={`${id}_options`}>
+        {(seriesData ?? []).map(s => <option key={s.id} value={s.title} />)}
+      </datalist>
+      {isNew && <p className="text-accent-400 text-xs">New series — it will be created on upload.</p>}
+    </div>
+  )
+}
+
 function UploadForm({ onSuccess }) {
-  const { data: seriesData } = useSeries()
   const upload = useUploadSermon()
   const fileRef = useRef(null)
 
@@ -198,7 +230,7 @@ function UploadForm({ onSuccess }) {
   const [form, setForm] = useState({
     sermon_title: '',
     sermon_speaker: '',
-    sermon_series: '',
+    sermon_series_title: '',
     sermon_date: '',
     sermon_tags: '',
     description: '',
@@ -230,6 +262,7 @@ function UploadForm({ onSuccess }) {
       ...prev,
       sermon_title:   meta.title   || prev.sermon_title,
       sermon_speaker: meta.speaker || prev.sermon_speaker,
+      sermon_series_title: prev.sermon_series_title || meta.album,
       sermon_date:    meta.date    || prev.sermon_date,
     }))
     setParsingMeta(false)
@@ -336,13 +369,11 @@ function UploadForm({ onSuccess }) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <label className="label" htmlFor="sermon_series">Series</label>
-          <select id="sermon_series" name="sermon_series" value={form.sermon_series} onChange={handleChange} className="input-field">
-            <option value="">— None —</option>
-            {(seriesData ?? []).map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
-          </select>
-        </div>
+        <SeriesField
+          id="sermon_series_title"
+          value={form.sermon_series_title}
+          onChange={value => setForm(prev => ({ ...prev, sermon_series_title: value }))}
+        />
         <div className="space-y-1.5">
           <label className="label" htmlFor="sermon_tags">Tags</label>
           <input id="sermon_tags" name="sermon_tags" type="text" value={form.sermon_tags} onChange={handleChange} className="input-field" placeholder="Faith, Hope" />
@@ -479,12 +510,11 @@ function QueueRow({ row, locked, onChange, onRemove, onRetry }) {
 }
 
 function BatchUpload() {
-  const { data: seriesData } = useSeries()
   const upload = useUploadSermon()
   const fileRef = useRef(null)
 
   const [rows, setRows] = useState([])
-  const [shared, setShared] = useState({ sermon_speaker: '', sermon_series: '', sermon_tags: '' })
+  const [shared, setShared] = useState({ sermon_speaker: '', sermon_series_title: '', sermon_tags: '' })
   const [running, setRunning] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [rejected, setRejected] = useState([])
@@ -552,7 +582,8 @@ function BatchUpload() {
             sermon_title: row.title.trim(),
             sermon_speaker: row.speaker.trim() || shared.sermon_speaker.trim(),
             sermon_date: row.date,
-            sermon_series: shared.sermon_series,
+            // Blank: the backend uses each file's album tag instead
+            sermon_series_title: shared.sermon_series_title.trim(),
             sermon_tags: shared.sermon_tags,
           },
           onProgress: pct => updateRow(id, { progress: pct }),
@@ -608,19 +639,13 @@ function BatchUpload() {
           <div className="card p-5 space-y-3">
             <p className="label">Applied to every file</p>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="label" htmlFor="batch_series">Series</label>
-                <select
-                  id="batch_series"
-                  value={shared.sermon_series}
-                  disabled={running}
-                  onChange={e => setShared(prev => ({ ...prev, sermon_series: e.target.value }))}
-                  className="input-field"
-                >
-                  <option value="">— None —</option>
-                  {(seriesData ?? []).map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
-                </select>
-              </div>
+              <SeriesField
+                id="batch_series"
+                value={shared.sermon_series_title}
+                disabled={running}
+                onChange={value => setShared(prev => ({ ...prev, sermon_series_title: value }))}
+                placeholder="Each file's album tag"
+              />
               <div className="space-y-1.5">
                 <label className="label" htmlFor="batch_tags">Tags</label>
                 <input
@@ -649,6 +674,7 @@ function BatchUpload() {
             <p className="text-spirit-500 text-xs leading-relaxed">
               Title, speaker and date are pre-filled from each file&apos;s audio tags or filename (dates read as DD.MM.YYYY) — check them before uploading.
               Anything left blank falls back to the default speaker above, then the file&apos;s tags.
+              With no series set here, each file goes into the series named by its album tag.
             </p>
           </div>
 

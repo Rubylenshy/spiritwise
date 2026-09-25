@@ -3,6 +3,7 @@ import { Flame } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 import { useEngagementStats, useSermons } from '../hooks/useSermons'
 import { PageLoader, ErrorState, TagPill } from '../components/ui'
+import { formatDuration, greetingFor } from '../lib/format'
 
 function StreakCard({ streak }) {
   const filled = Math.min(streak % 7 || (streak > 0 ? 7 : 0), 7)
@@ -95,7 +96,7 @@ function SermonCard({ sermon }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-spirit-100 font-medium text-sm leading-snug truncate">{sermon.title}</p>
-        <p className="text-spirit-400 text-xs mt-0.5">{sermon.speaker} · {sermon.duration_display}</p>
+        <p className="text-spirit-400 text-xs mt-0.5">{sermon.speaker} · {formatDuration(sermon.duration_seconds)}</p>
         <p className="text-spirit-500 text-xs">{sermon.series_title}</p>
       </div>
       {tag && <TagPill tag={tag} />}
@@ -110,8 +111,7 @@ export default function HomePage() {
   const { data: stats, isLoading: statsLoading, error: statsError, refetch: refetchStats } = useEngagementStats()
   const { data: sermonsData, isLoading: sermonsLoading } = useSermons({ page_size: 4 })
 
-  const hour = new Date().getHours()
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  const greeting = greetingFor()
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 sm:space-y-8 animate-slide-up">

@@ -31,7 +31,7 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.username || !form.password) {
-      setError('Please fill in all fields.')
+      setError('Please enter your username or email and password.')
       return
     }
     setLoading(true)
@@ -45,6 +45,7 @@ export default function LoginPage() {
         user: data.user,
         accessToken: data.access,
         refreshToken: data.refresh,
+        lastUsername: form.username.trim(),
       })
       navigate(from, { replace: true })
     } catch (err) {
@@ -108,7 +109,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="label" htmlFor="username">Username</label>
+              <label className="label" htmlFor="username">Username or email</label>
               <input
                 id="username"
                 name="username"
@@ -120,7 +121,7 @@ export default function LoginPage() {
                 value={form.username}
                 onChange={handleChange}
                 className="input-field"
-                placeholder="your_username"
+                placeholder="your_username or you@example.com"
               />
               {lastUsername && form.username === lastUsername && (
                 <button
