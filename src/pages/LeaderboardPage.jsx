@@ -81,7 +81,10 @@ export default function LeaderboardPage() {
             <p className="font-display text-2xl text-accent-400">#{data.my_rank}</p>
           </div>
           <div className="text-right">
-            <p className="label mb-0.5">Your XP</p>
+            {/* The period's XP, not the all-time total shown in the navbar */}
+            <p className="label mb-0.5">
+              {period === 'all_time' ? 'Your XP' : `Your XP ${PERIODS.find((p) => p.key === period).label.toLowerCase()}`}
+            </p>
             <p className="font-mono text-lg text-spirit-200">{(data.my_xp ?? 0).toLocaleString()}</p>
           </div>
         </div>

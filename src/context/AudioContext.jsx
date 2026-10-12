@@ -1,6 +1,8 @@
 import { createContext, useContext, useRef, useState, useCallback, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import api from '../lib/axios'
-import { useApplyReward } from '../hooks/useSermons'
+import { sermonQuery, useApplyReward } from '../hooks/useSermons'
+import useQueueStore from '../store/queueStore'
 
 const AudioContext = createContext(null)
 
@@ -16,12 +18,26 @@ const VOLUME_CONTROLLABLE = (() => {
   return probe.volume === 0.5
 })()
 
+// Speeds the rate button cycles through. The chosen one is remembered per browser.
+export const PLAYBACK_RATES = [0.75, 1, 1.25, 1.5, 1.75, 2]
+const RATE_KEY = 'spiritwise-playback-rate'
+
+function storedRate() {
+  try {
+    const rate = parseFloat(localStorage.getItem(RATE_KEY))
+    return PLAYBACK_RATES.includes(rate) ? rate : 1
+  } catch {
+    return 1
+  }
+}
+
 export function AudioProvider({ children }) {
   const audioRef = useRef(null)
   const progressTimerRef = useRef(null)
   const syncTimeoutRef = useRef(null)
   const completionSentRef = useRef(false)  // completion synced for the current sermon
   const applyReward = useApplyReward()
+  const queryClient = useQueryClient()
 
   const [currentSermon, setCurrentSermon] = useState(null)  // full sermon object
   const [playing, setPlaying] = useState(false)
@@ -30,6 +46,16 @@ export function AudioProvider({ children }) {
   const [volume, setVolume] = useState(1)
   const [muted, setMuted] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [playbackRate, setPlaybackRate] = useState(storedRate)
+
+  // load() resets playbackRate to defaultPlaybackRate, so setting both keeps
+  // the chosen speed across sermons
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+    audio.defaultPlaybackRate = playbackRate
+    audio.playbackRate = playbackRate
+  }, [playbackRate])
 
   // ── Sync progress to backend ────────────────────────────────────────────────
   // `completed` is sent whenever playback is past the threshold; the server
@@ -93,6 +119,7 @@ export function AudioProvider({ children }) {
     // New sermon — sync old one first
     if (currentSermon) syncProgress()
     completionSentRef.current = false
+    useQueueStore.getState().remove(sermon.id)
 
     setCurrentSermon(sermon)
     setCurrentTime(startTime)
@@ -113,6 +140,23 @@ export function AudioProvider({ children }) {
     }
     audio.addEventListener('loadedmetadata', onReady)
   }, [currentSermon, syncProgress])
+
+  // ── Queue ──────────────────────────────────────────────────────────────────
+  // Plays a queued sermon (the front of the queue by default). Its detail is
+  // fetched only now, and seeded into the query cache so the player page
+  // reuses it rather than counting a second play.
+  const playFromQueue = useCallback(async (id = useQueueStore.getState().items[0]?.id) => {
+    if (id == null) return
+    try {
+      const sermon = await queryClient.fetchQuery({ ...sermonQuery(id), staleTime: 0 })
+      // A finished sermon starts over rather than resuming at its end
+      const resumeAt = sermon.user_progress?.completed ? 0 : (sermon.user_progress?.progress_seconds ?? 0)
+      loadSermon(sermon, resumeAt)
+    } catch {
+      // Unpublished or unreachable — drop it so the queue doesn't stall on it
+      useQueueStore.getState().remove(id)
+    }
+  }, [queryClient, loadSermon])
 
   // ── Playback controls ──────────────────────────────────────────────────────
   const togglePlay = useCallback(() => {
@@ -163,6 +207,14 @@ export function AudioProvider({ children }) {
     setMuted(audio.muted)
   }, [])
 
+  const cyclePlaybackRate = useCallback(() => {
+    setPlaybackRate((rate) => {
+      const next = PLAYBACK_RATES[(PLAYBACK_RATES.indexOf(rate) + 1) % PLAYBACK_RATES.length]
+      try { localStorage.setItem(RATE_KEY, String(next)) } catch { /* not persisted */ }
+      return next
+    })
+  }, [])
+
   // ── Wire up the single global <audio> element ──────────────────────────────
   const progress = duration > 0 ? currentTime / duration : 0
 
@@ -185,6 +237,9 @@ export function AudioProvider({ children }) {
       syncProgress,
       changeVolume,
       toggleMute,
+      playbackRate,
+      cyclePlaybackRate,
+      playFromQueue,
     }}>
       {/* Single global audio element — never unmounts */}
       <audio
@@ -197,6 +252,7 @@ export function AudioProvider({ children }) {
         onEnded={() => {
           setPlaying(false)
           syncProgress()
+          playFromQueue()
         }}
         onWaiting={() => setLoading(true)}
         onCanPlay={() => setLoading(false)}

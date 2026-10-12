@@ -60,17 +60,23 @@ export function useSermons(params = {}) {
   })
 }
 
-export function useSermon(id) {
-  return useQuery({
+export function sermonQuery(id) {
+  return {
     queryKey: KEYS.sermon(id),
     queryFn: async () => {
       const { data } = await api.get(`/sermons/${id}/`)
       return data
     },
+  }
+}
+
+export function useSermon(id) {
+  return useQuery({
+    ...sermonQuery(id),
     enabled: !!id,
-    staleTime: 0,              // always fresh — token embedded in audio URL
+    staleTime: 1000 * 30,
     gcTime: 1000 * 60 * 5,
-    refetchOnMount: 'always',  // get fresh token every time player page opens
+    refetchOnMount: true,
   })
 }
 
@@ -394,6 +400,17 @@ export function useAddToPlaylist() {
 export function useRemoveFromPlaylist() {
   return usePlaylistMutation(async ({ playlistId, sermonId }) => {
     await api.delete(`/library/playlists/${playlistId}/items/${sermonId}/`)
+  })
+}
+
+export function useCreatePlaylistFrom() {
+  return usePlaylistMutation(async ({ name, sermonIds }) => {
+    const [first, ...rest] = sermonIds
+    const { data } = await api.post('/library/playlists/', { name, sermon_id: first })
+    for (const sermonId of rest) {
+      await api.post(`/library/playlists/${data.id}/items/`, { sermon_id: sermonId })
+    }
+    return data
   })
 }
 

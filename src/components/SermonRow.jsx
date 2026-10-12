@@ -1,11 +1,13 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Check, Heart, ListPlus, Loader2, Plus } from 'lucide-react'
+import { Check, Heart, ListEnd, ListPlus, Loader2, Plus } from 'lucide-react'
 import {
   useAddToPlaylist, useCreatePlaylist, useIsFavorited, usePlaylists, useRemoveFromPlaylist,
   useToggleFavorite,
 } from '../hooks/useSermons'
 import { useDismiss } from '../hooks/useDismiss'
+import { useAudio } from '../context/AudioContext'
+import useQueueStore from '../store/queueStore'
 import { TagPill } from './ui'
 import { formatDuration } from '../lib/format'
 
@@ -31,7 +33,29 @@ export function FavoriteButton({ sermon, className = '' }) {
   )
 }
 
-/** "Add to playlist" popover: tick existing playlists or create a new one with this sermon. */
+function QueueToggle({ sermon }) {
+  const { currentSermon } = useAudio()
+  const queued = useQueueStore((s) => s.items.some((i) => i.id === sermon.id))
+  const add = useQueueStore((s) => s.add)
+  const remove = useQueueStore((s) => s.remove)
+  const isPlaying = currentSermon?.id === sermon.id
+
+  return (
+    <button
+      type="button"
+      disabled={isPlaying}
+      onClick={() => (queued ? remove(sermon.id) : add(sermon))}
+      className="focus-ring w-full flex items-center gap-2 px-2 py-2 rounded-lg text-sm text-spirit-200 hover:bg-spirit-100/5 transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
+    >
+      {queued ? <Check className="w-4 h-4 text-accent-500" /> : <ListEnd className="w-4 h-4" />}
+      <span className="flex-1 text-left">
+        {isPlaying ? 'Now playing' : queued ? 'In queue — remove' : 'Add to queue'}
+      </span>
+    </button>
+  )
+}
+
+/** Add menu: queue the sermon, tick existing playlists, or create a new one with it. */
 export function AddToPlaylistButton({ sermon, align = 'right' }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
@@ -61,9 +85,9 @@ export function AddToPlaylistButton({ sermon, align = 'right' }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        aria-label="Add to playlist"
+        aria-label="Add to queue or playlist"
         aria-expanded={open}
-        title="Add to playlist"
+        title="Add to queue or playlist"
         className={iconButton}
       >
         <ListPlus className="w-4 h-4" />
@@ -73,7 +97,9 @@ export function AddToPlaylistButton({ sermon, align = 'right' }) {
         <div
           className={`absolute z-30 top-full mt-2 ${align === 'right' ? 'right-0' : 'left-0'} w-64 card p-2 space-y-1 text-left animate-fade-in`}
         >
-          <p className="label px-2 pt-1">Add to playlist</p>
+          <QueueToggle sermon={sermon} />
+
+          <p className="label px-2 pt-2 mt-1 border-t border-black/5 dark:border-white/5">Add to playlist</p>
 
           {isLoading ? (
             <div className="flex justify-center py-3"><Loader2 className="w-4 h-4 animate-spin text-accent-500" /></div>
