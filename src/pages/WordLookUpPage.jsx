@@ -383,6 +383,63 @@ function FrequencyVisualiser({ analyserNode, active }) {
 const SELECTION_MIN = 3
 const SELECTION_MAX = 300
 
+// Words either side of a tapped word that a tap selects. Live transcripts
+// rarely have punctuation, so a "sentence" is this window, cut short at any
+// sentence break that is there.
+const TAP_PHRASE_RADIUS = 6
+
+function caretFromPoint(x, y) {
+  if (document.caretPositionFromPoint) {
+    const pos = document.caretPositionFromPoint(x, y)
+    return pos && { node: pos.offsetNode, offset: pos.offset }
+  }
+  const range = document.caretRangeFromPoint?.(x, y)
+  return range && { node: range.startContainer, offset: range.startOffset }
+}
+
+/** Selects the phrase around the point (x, y) inside `container`, as a real selection. */
+function selectPhraseAt(container, x, y) {
+  const caret = caretFromPoint(x, y)
+  if (!caret || caret.node.nodeType !== Node.TEXT_NODE || !container.contains(caret.node)) return
+
+  // The container's text as one string, with where each text node starts in it
+  const nodes = []
+  let full = ''
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT)
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    nodes.push({ node: n, start: full.length })
+    full += n.textContent
+  }
+  const at = nodes.find((n) => n.node === caret.node).start + caret.offset
+
+  // Bounded by the surrounding sentence breaks, if any…
+  const before = full.slice(0, at)
+  const prevBreak = Math.max(before.lastIndexOf('. '), before.lastIndexOf('? '), before.lastIndexOf('! '))
+  const lo = prevBreak === -1 ? 0 : prevBreak + 2
+  const nextBreak = /[.?!](\s|$)/.exec(full.slice(at))
+  const sentenceEnd = nextBreak ? at + nextBreak.index + 1 : full.length
+
+  // …then to TAP_PHRASE_RADIUS words either side of the tapped one
+  const words = [...full.slice(lo, sentenceEnd).matchAll(/\S+/g)]
+    .map((m) => ({ start: lo + m.index, end: lo + m.index + m[0].length }))
+  if (!words.length) return
+  let hit = words.findIndex((w) => at <= w.end)
+  if (hit === -1) hit = words.length - 1
+  const first = words[Math.max(0, hit - TAP_PHRASE_RADIUS)]
+  const last = words[Math.min(words.length - 1, hit + TAP_PHRASE_RADIUS)]
+
+  const point = (offset) => {
+    const n = [...nodes].reverse().find((t) => t.start <= offset)
+    return [n.node, Math.min(offset - n.start, n.node.textContent.length)]
+  }
+  const range = document.createRange()
+  range.setStart(...point(first.start))
+  range.setEnd(...point(last.end))
+  const sel = window.getSelection()
+  sel.removeAllRanges()
+  sel.addRange(range)
+}
+
 // Half the "Look up selection" button's width, to keep it inside the card
 const LOOKUP_BUTTON_HALF_WIDTH = 80
 
@@ -438,6 +495,14 @@ function HighlightedTranscript({ transcript, interimTranscript, refs, onRefClick
     return () => document.removeEventListener('pointerdown', onDown)
   }, [selection, setSelection])
 
+  // A plain tap (not a drag-selection, not a highlighted reference) selects
+  // the phrase around it, so a phone user never has to drag handles
+  const handleTextClick = (e) => {
+    if (e.target.closest('button')) return
+    if (!window.getSelection()?.isCollapsed) return
+    selectPhraseAt(textRef.current, e.clientX, e.clientY)
+  }
+
   const lookUpSelection = () => {
     onSelectionLookup(selection.text)
     setSelection(null)
@@ -473,13 +538,14 @@ function HighlightedTranscript({ transcript, interimTranscript, refs, onRefClick
       <div
         ref={textRef}
         onScroll={() => selection && setSelection(null)}
+        onClick={isEmpty ? undefined : handleTextClick}
         className="min-h-36 max-h-60 overflow-y-auto p-4 text-sm leading-relaxed font-sans"
       >
         {isEmpty ? (
           <p className="text-spirit-600 italic">
             Start listening — your transcript will appear here. Detected scripture references
-            will be highlighted in blue. Tap any highlight to look it up, or select any
-            words the parser missed to look those up.
+            will be highlighted in blue. Tap any highlight to look it up, or tap anywhere
+            else in the transcript to look up that phrase.
           </p>
         ) : (
           <p>
@@ -831,6 +897,12 @@ function FileFallback({ onTranscript }) {
 // ── WordLookUpPage ────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
 
+const AUTO_LOOKUP_KEY = 'spiritwise-wl-auto-lookup'
+
+function storedAutoLookup() {
+  try { return localStorage.getItem(AUTO_LOOKUP_KEY) !== 'off' } catch { return true }
+}
+
 export default function WordLookUpPage() {
   const {
     start, stop,
@@ -846,7 +918,10 @@ export default function WordLookUpPage() {
   const [displayInterim, setDisplayInterim] = useState('')
   const [detectedRefs, setDetectedRefs] = useState([])
   const [results, setResults] = useState([])
-  const [lookingUp, setLookingUp] = useState(false)
+  const [pendingLookups, setPendingLookups] = useState(0)  // several can run at once (auto-lookup)
+  const lookingUp = pendingLookups > 0
+  const [autoLookup, setAutoLookup] = useState(storedAutoLookup)
+  const autoFetchedRef = useRef(new Set())  // lower-cased queries auto-lookup already ran
   const [isAiLookup, setIsAiLookup] = useState(false)
   const [lookupError, setLookupError] = useState(null)
 
@@ -861,10 +936,11 @@ export default function WordLookUpPage() {
   }, [displayTranscript, displayInterim])
 
   // ── Lookup a detected reference (from mic transcript or history) ──────────
-  const handleRefClick = useCallback(async (ref) => {
+  // `silent` (auto-lookup) skips the error banner — the user didn't ask for it
+  const handleRefClick = useCallback(async (ref, { silent = false } = {}) => {
     if (results.some(r => r.reference?.toLowerCase() === ref.query?.toLowerCase())) return
 
-    setLookingUp(true)
+    setPendingLookups((n) => n + 1)
     setIsAiLookup(false)
     setLookupError(null)
 
@@ -881,22 +957,24 @@ export default function WordLookUpPage() {
 
       if (data.results?.length) {
         setResults(prev => [...data.results, ...prev])
-      } else {
+      } else if (!silent) {
         setLookupError(`No verse found for "${ref.query}".`)
         setTimeout(() => setLookupError(null), 4000)
       }
     } catch (err) {
-      setLookupError(err.response?.data?.detail ?? 'Lookup failed. Check your connection.')
-      setTimeout(() => setLookupError(null), 4000)
+      if (!silent) {
+        setLookupError(err.response?.data?.detail ?? 'Lookup failed. Check your connection.')
+        setTimeout(() => setLookupError(null), 4000)
+      }
     } finally {
-      setLookingUp(false)
+      setPendingLookups((n) => n - 1)
       setIsAiLookup(false)
     }
   }, [results])
 
   // ── Manual phrase/reference search ────────────────────────────────────────
   const handleManualSearch = useCallback(async (input) => {
-    setLookingUp(true)
+    setPendingLookups((n) => n + 1)
     setIsAiLookup(false)
     setLookupError(null)
 
@@ -921,10 +999,35 @@ export default function WordLookUpPage() {
       setLookupError(err.response?.data?.detail ?? 'Lookup failed.')
       setTimeout(() => setLookupError(null), 4000)
     } finally {
-      setLookingUp(false)
+      setPendingLookups((n) => n - 1)
       setIsAiLookup(false)
     }
   }, [])
+
+  // ── Auto-lookup ───────────────────────────────────────────────────────────
+  // Exact references ("John 3:16") are fetched as soon as they're in the final
+  // transcript — not the interim one, which would fetch "John 3:1" while
+  // "John 3:16" is still being spoken. Books and thematic phrases stay
+  // tap-to-look-up: a whole book is no useful result, and phrases can cost an
+  // AI call each.
+  const handleRefClickRef = useRef(handleRefClick)
+  handleRefClickRef.current = handleRefClick
+  useEffect(() => {
+    if (!autoLookup) return
+    for (const ref of extractReferences(displayTranscript)) {
+      const key = ref.query.toLowerCase()
+      if (ref.type !== 'explicit' || autoFetchedRef.current.has(key)) continue
+      autoFetchedRef.current.add(key)
+      handleRefClickRef.current(ref, { silent: true })
+    }
+  }, [displayTranscript, autoLookup])
+
+  const toggleAutoLookup = () => {
+    setAutoLookup((on) => {
+      try { localStorage.setItem(AUTO_LOOKUP_KEY, on ? 'off' : 'on') } catch { /* not persisted */ }
+      return !on
+    })
+  }
 
   // ── Lookup of text selected in the transcript ────────────────────────────
   // An exact reference inside the selection ("turn to John 3:16 with me")
@@ -936,7 +1039,7 @@ export default function WordLookUpPage() {
 
   // ── History re-select ─────────────────────────────────────────────────────
   const handleHistorySelect = useCallback(async (referenceStr) => {
-    setLookingUp(true)
+    setPendingLookups((n) => n + 1)
     setIsAiLookup(false)
     setLookupError(null)
     try {
@@ -950,7 +1053,7 @@ export default function WordLookUpPage() {
     } catch {
       // silently ignore
     } finally {
-      setLookingUp(false)
+      setPendingLookups((n) => n - 1)
     }
   }, [])
 
@@ -965,6 +1068,7 @@ export default function WordLookUpPage() {
     setDisplayInterim('')
     setDetectedRefs([])
     setResults([])
+    autoFetchedRef.current.clear()
   }
 
   return (
@@ -1018,6 +1122,23 @@ export default function WordLookUpPage() {
         wordCount={wordCount}
         onClear={handleClear}
       />
+
+      {/* ── Auto-lookup switch ───────────────────────────────────────────────── */}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={autoLookup}
+        onClick={toggleAutoLookup}
+        className="focus-ring rounded-xl w-full flex items-center justify-between gap-4 text-left -mt-4"
+      >
+        <span>
+          <span className="block text-spirit-200 text-sm">Auto look up verses</span>
+          <span className="block text-spirit-500 text-xs">Exact references like John 3:16 appear in Results as they&apos;re spoken</span>
+        </span>
+        <span className={`relative w-10 h-6 rounded-full shrink-0 transition-colors ${autoLookup ? 'bg-accent-500' : 'bg-spirit-700'}`}>
+          <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${autoLookup ? 'translate-x-4' : ''}`} />
+        </span>
+      </button>
 
       {/* ── Detected refs quick-tap list ──────────────────────────────────────── */}
       {detectedRefs.length > 0 && (
