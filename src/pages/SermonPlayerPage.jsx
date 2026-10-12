@@ -1,16 +1,21 @@
-import { useState, useEffect } from 'react'
-import { AudioWaveform, Check, Volume1, Volume2, VolumeX } from 'lucide-react'
-import { useParams, Link } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { AudioWaveform, Check, SkipForward, Volume1, Volume2, VolumeX } from 'lucide-react'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useSermon, useSubmitAnswer } from '../hooks/useSermons'
 import { useAudio } from '../context/AudioContext'
 import { PageLoader, ErrorState, Spinner } from '../components/ui'
 import SeekBar from '../components/SeekBar'
 import { AddToPlaylistButton, FavoriteButton } from '../components/SermonRow'
+import PlaybackRateButton from '../components/PlaybackRateButton'
+import QueuePanel from '../components/QueuePanel'
+import useQueueStore from '../store/queueStore'
 import { formatDuration } from '../lib/format'
 
 function ReflectionQuestion({ question, sermonId, index }) {
-  const [answer, setAnswer] = useState('')
-  const [submitted, setSubmitted] = useState(false)
+  // Already-answered questions show the saved answer — XP is paid only for a
+  // question's first answer, so offering "+10 XP" again would be a false promise
+  const [answer, setAnswer] = useState(question.my_answer ?? '')
+  const [submitted, setSubmitted] = useState(!!question.my_answer)
   const submitAnswer = useSubmitAnswer()
 
   // XP / badge announcements come from the server response (useSubmitAnswer)
@@ -84,6 +89,7 @@ function NextSermonCard({ nextSermon }) {
 
 export default function SermonPlayerPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const { data: sermon, isLoading, error, refetch } = useSermon(id)
 
   const {
@@ -102,7 +108,9 @@ export default function SermonPlayerPage() {
     volumeControllable,
     changeVolume,
     toggleMute,
+    playFromQueue,
   } = useAudio()
+  const queueLength = useQueueStore((s) => s.items.length)
 
   const [showQuestions, setShowQuestions] = useState(false)
 
@@ -129,10 +137,20 @@ export default function SermonPlayerPage() {
     if (effectiveProgress >= 0.8 && !showQuestions && sermon) setShowQuestions(true)
   }, [effectiveProgress, showQuestions, sermon])
 
-  // Show questions if already completed
+  // Questions start shown only if this sermon is already completed. Reset per
+  // sermon — the page stays mounted when moving between sermons.
   useEffect(() => {
-    if (sermon?.user_progress?.completed) setShowQuestions(true)
+    setShowQuestions(!!sermon?.user_progress?.completed)
   }, [sermon?.id])
+
+  const prevPlayingIdRef = useRef(currentSermon?.id)
+  useEffect(() => {
+    const prevId = prevPlayingIdRef.current
+    prevPlayingIdRef.current = currentSermon?.id
+    if (currentSermon && prevId === sermon?.id && currentSermon.id !== sermon?.id) {
+      navigate(`/sermons/${currentSermon.id}`)
+    }
+  }, [currentSermon, sermon?.id, navigate])
 
   if (isLoading) return <PageLoader />
   if (error) return <ErrorState message="Could not load this sermon." onRetry={refetch} />
@@ -212,7 +230,9 @@ export default function SermonPlayerPage() {
         </div>
 
         {/* Controls */}
-        <div className="flex items-center justify-center gap-6">
+        <div className="flex items-center justify-center gap-4 sm:gap-6">
+          <PlaybackRateButton className="w-12" />
+
           <button onClick={() => skip(-15)} className="text-spirit-400 hover:text-spirit-200 transition-colors">
             <svg viewBox="0 0 36 36" className="w-8 h-8" fill="none">
               <path d="M18 6 A12 12 0 0 0 6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
@@ -255,6 +275,17 @@ export default function SermonPlayerPage() {
               <polyline points="30,12 30,18 24,18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
               <text x="14" y="26" fontSize="9" fill="currentColor" fontFamily="sans-serif">15</text>
             </svg>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => playFromQueue()}
+            disabled={!queueLength}
+            aria-label="Play next in queue"
+            title="Play next in queue"
+            className="focus-ring rounded-lg w-12 h-8 flex items-center justify-center text-spirit-400 hover:text-spirit-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <SkipForward className="w-6 h-6" />
           </button>
         </div>
 
@@ -301,6 +332,9 @@ export default function SermonPlayerPage() {
           ))}
         </div>
       )}
+
+      {/* Play queue */}
+      {queueLength > 0 && <QueuePanel className="card p-5" />}
 
       {/* Next sermon */}
       {showQuestions && sermon.next_sermon && (

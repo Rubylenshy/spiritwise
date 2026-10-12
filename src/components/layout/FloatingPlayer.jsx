@@ -1,8 +1,15 @@
+import { useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { AudioWaveform, Loader2, Maximize2, Pause, Play, RotateCcw, RotateCw } from 'lucide-react'
+import {
+  AudioWaveform, ListMusic, Loader2, Maximize2, Pause, Play, RotateCcw, RotateCw, SkipForward,
+} from 'lucide-react'
 import { useAudio } from '../../context/AudioContext'
+import { useDismiss } from '../../hooks/useDismiss'
+import useQueueStore from '../../store/queueStore'
 import SeekBar from '../SeekBar'
 import { FavoriteButton } from '../SermonRow'
+import PlaybackRateButton from '../PlaybackRateButton'
+import QueuePanel from '../QueuePanel'
 import { formatDuration } from '../../lib/format'
 
 function Waveform({ playing }) {
@@ -36,7 +43,12 @@ export default function FloatingPlayer() {
     togglePlay,
     seek,
     skip,
+    playFromQueue,
   } = useAudio()
+  const queueLength = useQueueStore((s) => s.items.length)
+  const [queueOpen, setQueueOpen] = useState(false)
+  const ref = useRef(null)
+  useDismiss(ref, queueOpen, () => setQueueOpen(false))
 
   // Hide on the player page itself — that page has its own full controls
   const isPlayerPage = pathname.startsWith('/sermons/') && pathname !== '/sermons'
@@ -46,7 +58,13 @@ export default function FloatingPlayer() {
 
   return (
     // Mobile: sits on top of the BottomNav (h-14 + safe area); desktop: flush, right of the sidebar
-    <div className="fixed inset-x-0 z-30 bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-0 lg:left-64">
+    <div ref={ref} className="fixed inset-x-0 z-30 bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-0 lg:left-64">
+      {queueOpen && (
+        <div className="absolute bottom-full right-2 sm:right-4 mb-3 w-[calc(100vw-1rem)] max-w-sm card p-4 animate-fade-in">
+          <QueuePanel />
+        </div>
+      )}
+
       {/* Progress bar — a 4px track along the top edge, with a taller
           transparent hit area overhanging it so it's grabbable on touch */}
       <SeekBar
@@ -59,7 +77,7 @@ export default function FloatingPlayer() {
       />
 
       {/* Main bar */}
-      <div className="glass-chrome border-t border-black/5 dark:border-white/5 px-4 py-2 flex items-center gap-3">
+      <div className="glass-chrome border-t border-black/5 dark:border-white/5 px-4 py-2 flex items-center gap-2 sm:gap-3">
 
         {/* Thumbnail */}
         <div className="w-10 h-10 rounded-lg glass flex items-center justify-center shrink-0 overflow-hidden">
@@ -144,7 +162,40 @@ export default function FloatingPlayer() {
           >
             <RotateCw className="w-4 h-4" />
           </button>
+
+          {queueLength > 0 && (
+            <button
+              type="button"
+              onClick={() => playFromQueue()}
+              aria-label="Play next in queue"
+              title="Play next in queue"
+              className="focus-ring rounded-lg w-8 h-8 hidden sm:flex items-center justify-center text-spirit-400 hover:text-spirit-100 transition-colors"
+            >
+              <SkipForward className="w-4 h-4" />
+            </button>
+          )}
         </div>
+
+        {hasSermon && <PlaybackRateButton className="hidden sm:flex shrink-0" />}
+
+        {/* Queue */}
+        <button
+          type="button"
+          onClick={() => setQueueOpen((o) => !o)}
+          aria-label={`Queue${queueLength ? `, ${queueLength} sermons` : ''}`}
+          aria-expanded={queueOpen}
+          title="Queue"
+          className={`focus-ring relative rounded-lg w-8 h-8 flex items-center justify-center shrink-0 transition-colors ${
+            queueOpen ? 'text-accent-400' : 'text-spirit-500 hover:text-spirit-100'
+          }`}
+        >
+          <ListMusic className="w-4 h-4" />
+          {queueLength > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[1rem] h-4 px-1 rounded-full bg-accent-500 text-white text-[10px] font-mono leading-4 text-center">
+              {queueLength}
+            </span>
+          )}
+        </button>
 
         {/* Open player link */}
         {hasSermon && (
