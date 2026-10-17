@@ -1,10 +1,14 @@
-import { createContext, useContext, useRef, useState, useCallback, useEffect } from 'react'
+import { createContext, useContext, useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import api from '../lib/axios'
 import { sermonQuery, useApplyReward } from '../hooks/useSermons'
 import useQueueStore from '../store/queueStore'
 
 const AudioContext = createContext(null)
+// Just what's playing, and the actions to change it. Changes only when the
+// sermon or play state does — not on every timeupdate like AudioContext — so
+// whole grids of tiles can read it without re-rendering several times a second.
+const NowPlayingContext = createContext(null)
 
 // Fraction of a sermon that must be played for it to count as completed (and
 // earn XP). Keep in sync with COMPLETION_THRESHOLD in the backend's sermons/views.py.
@@ -142,8 +146,8 @@ export function AudioProvider({ children }) {
   }, [currentSermon, syncProgress])
 
   // ── Queue ──────────────────────────────────────────────────────────────────
-  // Plays a queued sermon (the front of the queue by default). Its detail is
-  // fetched only now, and seeded into the query cache so the player page
+  // Plays a sermon by id — a queued one (the front of the queue by default),
+  // or any other, e.g. from a tile's play button. Its detail is fetched only now, and seeded into the query cache so the player page
   // reuses it rather than counting a second play.
   const playFromQueue = useCallback(async (id = useQueueStore.getState().items[0]?.id) => {
     if (id == null) return
@@ -218,6 +222,12 @@ export function AudioProvider({ children }) {
   // ── Wire up the single global <audio> element ──────────────────────────────
   const progress = duration > 0 ? currentTime / duration : 0
 
+  const currentId = currentSermon?.id ?? null
+  const nowPlaying = useMemo(
+    () => ({ currentId, playing, togglePlay, playFromQueue }),
+    [currentId, playing, togglePlay, playFromQueue],
+  )
+
   return (
     <AudioContext.Provider value={{
       audioRef,
@@ -257,7 +267,9 @@ export function AudioProvider({ children }) {
         onWaiting={() => setLoading(true)}
         onCanPlay={() => setLoading(false)}
       />
-      {children}
+      <NowPlayingContext.Provider value={nowPlaying}>
+        {children}
+      </NowPlayingContext.Provider>
     </AudioContext.Provider>
   )
 }
@@ -265,5 +277,12 @@ export function AudioProvider({ children }) {
 export function useAudio() {
   const ctx = useContext(AudioContext)
   if (!ctx) throw new Error('useAudio must be used inside AudioProvider')
+  return ctx
+}
+
+/** { currentId, playing, togglePlay, playFromQueue } — cheap to read from list items. */
+export function useNowPlaying() {
+  const ctx = useContext(NowPlayingContext)
+  if (!ctx) throw new Error('useNowPlaying must be used inside AudioProvider')
   return ctx
 }

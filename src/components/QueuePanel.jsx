@@ -3,6 +3,7 @@ import { Check, ListMusic, Loader2, Play, X } from 'lucide-react'
 import { useAudio } from '../context/AudioContext'
 import { useCreatePlaylistFrom } from '../hooks/useSermons'
 import useQueueStore from '../store/queueStore'
+import CoverArt from './CoverArt'
 import { formatDuration } from '../lib/format'
 
 /** "Save as playlist": the playing sermon followed by the queue, in order. */
@@ -110,9 +111,13 @@ export default function QueuePanel({ className = '' }) {
                 title="Play now"
                 className="focus-ring rounded-lg flex-1 min-w-0 flex items-center gap-3 px-2 py-2 text-left disabled:opacity-60 group"
               >
-                <span className="w-4 h-4 shrink-0 flex items-center justify-center text-spirit-500 group-hover:text-accent-400">
-                  {starting === item.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                </span>
+                <CoverArt src={item.thumbnail} seed={item.title} rounded="rounded" className="w-9 h-9">
+                  <span className={`absolute inset-0 flex items-center justify-center bg-black/45 text-white transition-opacity ${
+                    starting === item.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  }`}>
+                    {starting === item.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" fill="currentColor" />}
+                  </span>
+                </CoverArt>
                 <span className="flex-1 min-w-0">
                   <span className="block text-spirit-100 text-sm truncate">{item.title}</span>
                   <span className="block text-spirit-500 text-xs truncate">{item.speaker}</span>

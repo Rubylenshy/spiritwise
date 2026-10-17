@@ -4,7 +4,9 @@ import { X } from 'lucide-react'
 import { useSermons, useTags } from '../hooks/useSermons'
 import { useDebounce } from '../hooks/useDebounce'
 import { PageLoader, ErrorState, EmptyState, TagPill } from '../components/ui'
-import { SermonRow } from '../components/SermonRow'
+import { SermonRow, SermonTile } from '../components/SermonRow'
+import { ListHeader, MediaGrid, TrackList } from '../components/MediaGrid'
+import { useViewMode } from '../hooks/useViewMode'
 
 function Pagination({ count, pageSize, currentPage, onPage }) {
   const totalPages = Math.ceil(count / pageSize)
@@ -41,7 +43,9 @@ export default function SermonLibraryPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const speaker = searchParams.get('speaker') || null
 
-  const PAGE_SIZE = 10
+  // Divides evenly into the 2 / 3 / 4 / 6-column grid
+  const PAGE_SIZE = 24
+  const [view, setView] = useViewMode('sermons')
   const debouncedQuery = useDebounce(query, 400)
 
   const { data: tagsData } = useTags()
@@ -74,9 +78,9 @@ export default function SermonLibraryPage() {
   const count = data?.count ?? 0
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6 animate-slide-up">
+    <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6 animate-slide-up">
       {/* Search */}
-      <div className="relative">
+      <div className="relative max-w-xl">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}
           className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-spirit-500 pointer-events-none">
           <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" strokeLinecap="round" />
@@ -132,7 +136,7 @@ export default function SermonLibraryPage() {
 
       {/* Count */}
       {!isLoading && (
-        <p className="label">{count} sermon{count !== 1 ? 's' : ''}</p>
+        <ListHeader label={`${count} sermon${count !== 1 ? 's' : ''}`} view={view} onView={setView} />
       )}
 
       {/* List */}
@@ -144,9 +148,15 @@ export default function SermonLibraryPage() {
         <EmptyState title="No sermons found" subtitle="Try a different search or tag filter." />
       ) : (
         <>
-          <div className="space-y-2">
-            {sermons.map((s) => <SermonRow key={s.id} sermon={s} />)}
-          </div>
+          {view === 'grid' ? (
+            <MediaGrid>
+              {sermons.map((s) => <SermonTile key={s.id} sermon={s} />)}
+            </MediaGrid>
+          ) : (
+            <TrackList>
+              {sermons.map((s) => <SermonRow key={s.id} sermon={s} />)}
+            </TrackList>
+          )}
           <Pagination
             count={count}
             pageSize={PAGE_SIZE}

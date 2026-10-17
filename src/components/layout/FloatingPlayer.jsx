@@ -1,13 +1,14 @@
 import { useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
-  AudioWaveform, ListMusic, Loader2, Maximize2, Pause, Play, RotateCcw, RotateCw, SkipForward,
+  ListMusic, Loader2, Maximize2, Pause, Play, RotateCcw, RotateCw, SkipForward,
 } from 'lucide-react'
 import { useAudio } from '../../context/AudioContext'
 import { useDismiss } from '../../hooks/useDismiss'
 import useQueueStore from '../../store/queueStore'
 import SeekBar from '../SeekBar'
 import { FavoriteButton } from '../SermonRow'
+import CoverArt from '../CoverArt'
 import PlaybackRateButton from '../PlaybackRateButton'
 import QueuePanel from '../QueuePanel'
 import { formatDuration } from '../../lib/format'
@@ -80,13 +81,12 @@ export default function FloatingPlayer() {
       <div className="glass-chrome border-t border-black/5 dark:border-white/5 px-4 py-2 flex items-center gap-2 sm:gap-3">
 
         {/* Thumbnail */}
-        <div className="w-10 h-10 rounded-lg glass flex items-center justify-center shrink-0 overflow-hidden">
-          {currentSermon?.thumbnail ? (
-            <img src={currentSermon.thumbnail} alt="" className="w-full h-full object-cover" />
-          ) : (
-            <AudioWaveform className="w-5 h-5 text-accent-400" />
-          )}
-        </div>
+        <CoverArt
+          src={currentSermon?.thumbnail}
+          seed={currentSermon?.series?.title || currentSermon?.title}
+          rounded="rounded-md"
+          className="w-10 h-10 shadow-md"
+        />
 
         {/* Info */}
         <div className="flex-1 min-w-0">
@@ -123,7 +123,7 @@ export default function FloatingPlayer() {
           </div>
         )}
 
-        {hasSermon && <FavoriteButton sermon={currentSermon} className="w-8 h-8" />}
+        {hasSermon && <FavoriteButton sermon={currentSermon} size="w-8 h-8" />}
 
         {/* Controls */}
         <div className="flex items-center gap-1 shrink-0">
