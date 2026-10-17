@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom'
 import { Flame } from 'lucide-react'
 import useAuthStore from '../store/authStore'
-import { useEngagementStats, useSermons } from '../hooks/useSermons'
-import { PageLoader, ErrorState, TagPill } from '../components/ui'
-import { formatDuration, greetingFor } from '../lib/format'
+import { useEngagementStats, useSeries, useSermons } from '../hooks/useSermons'
+import { PageLoader, ErrorState } from '../components/ui'
+import { SermonTile } from '../components/SermonRow'
+import { MediaTile, Shelf, shelfItemClass } from '../components/MediaGrid'
+import { greetingFor } from '../lib/format'
 
 function StreakCard({ streak }) {
   const filled = Math.min(streak % 7 || (streak > 0 ? 7 : 0), 7)
@@ -100,32 +102,13 @@ function StreakHeatmap({ last7 }) {
   )
 }
 
-function SermonCard({ sermon }) {
-  const tag = sermon.tags?.[0]
-
-  return (
-    <Link to={`/sermons/${sermon.id}`} className="card-hover p-4 flex gap-4 items-start group">
-      <div className="w-10 h-10 rounded-xl bg-spirit-700 border border-spirit-600 flex items-center justify-center shrink-0 group-hover:border-accent-500/40 transition-colors">
-        <svg viewBox="0 0 24 24" className="w-5 h-5 text-accent-500" fill="currentColor">
-          <polygon points="5 3 19 12 5 21 5 3" />
-        </svg>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-spirit-100 font-medium text-sm leading-snug truncate">{sermon.title}</p>
-        <p className="text-spirit-400 text-xs mt-0.5">{sermon.speaker} · {formatDuration(sermon.duration_seconds)}</p>
-        <p className="text-spirit-500 text-xs">{sermon.series_title}</p>
-      </div>
-      {tag && <TagPill tag={tag} />}
-    </Link>
-  )
-}
-
 export default function HomePage() {
   const user = useAuthStore((s) => s.user)
   const firstName = user?.first_name || user?.username || 'Friend'
 
   const { data: stats, isLoading: statsLoading, error: statsError, refetch: refetchStats } = useEngagementStats()
-  const { data: sermonsData, isLoading: sermonsLoading } = useSermons({ page_size: 4 })
+  const { data: sermonsData, isLoading: sermonsLoading } = useSermons({ page_size: 10 })
+  const { data: series } = useSeries()
 
   const greeting = greetingFor()
 
@@ -167,17 +150,29 @@ export default function HomePage() {
         </>
       )}
 
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-display text-xl text-spirit-100">Continue listening</h3>
-          <Link to="/sermons" className="text-accent-400 text-sm hover:text-accent-300 transition-colors">Browse all →</Link>
-        </div>
-        {sermonsLoading ? <PageLoader /> : (
-          <div className="space-y-2">
-            {(sermonsData?.results ?? []).map((s) => <SermonCard key={s.id} sermon={s} />)}
-          </div>
-        )}
-      </div>
+      {sermonsLoading ? <PageLoader /> : sermonsData?.results?.length > 0 && (
+        <Shelf title="Latest sermons" to="/sermons">
+          {sermonsData.results.map((s) => (
+            // A Shelf scrolls, which would clip the add-to-playlist menu
+            <SermonTile key={s.id} sermon={s} showActions={false} className={shelfItemClass} />
+          ))}
+        </Shelf>
+      )}
+
+      {series?.length > 0 && (
+        <Shelf title="Series" to="/series">
+          {series.slice(0, 10).map((s) => (
+            <div key={s.id} className={shelfItemClass}>
+              <MediaTile
+                to={`/series/${s.id}`}
+                title={s.title}
+                subtitle={`${s.sermon_count} sermon${s.sermon_count !== 1 ? 's' : ''}`}
+                art={{ src: s.cover_image }}
+              />
+            </div>
+          ))}
+        </Shelf>
+      )}
 
       <div className="card p-6 border-l-2 border-l-accent-500 rounded-r-2xl rounded-l-none">
         <p className="label mb-3">Verse of the day</p>

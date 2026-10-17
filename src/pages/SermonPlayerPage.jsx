@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { AudioWaveform, Check, SkipForward, Volume1, Volume2, VolumeX } from 'lucide-react'
+import { Check, SkipForward, Volume1, Volume2, VolumeX } from 'lucide-react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useSermon, useSubmitAnswer } from '../hooks/useSermons'
 import { useAudio } from '../context/AudioContext'
@@ -9,6 +9,7 @@ import { AddToPlaylistButton, FavoriteButton } from '../components/SermonRow'
 import PlaybackRateButton from '../components/PlaybackRateButton'
 import QueuePanel from '../components/QueuePanel'
 import useQueueStore from '../store/queueStore'
+import CoverArt from '../components/CoverArt'
 import { formatDuration } from '../lib/format'
 
 function ReflectionQuestion({ question, sermonId, index }) {
@@ -69,12 +70,7 @@ function NextSermonCard({ nextSermon }) {
   if (!nextSermon) return null
   return (
     <div className="card p-5 flex items-center gap-4 animate-slide-up">
-      <div className="w-10 h-10 rounded-xl bg-spirit-700 border border-spirit-600 flex items-center justify-center shrink-0 overflow-hidden">
-        {nextSermon.thumbnail
-          ? <img src={nextSermon.thumbnail} alt="" className="w-full h-full object-cover" />
-          : <AudioWaveform className="w-5 h-5 text-accent-400" />
-        }
-      </div>
+      <CoverArt src={nextSermon.thumbnail} seed={nextSermon.title} rounded="rounded-md" className="w-12 h-12" />
       <div className="flex-1 min-w-0">
         <p className="label mb-0.5">Up next in series</p>
         <p className="text-spirit-100 font-medium text-sm truncate">{nextSermon.title}</p>
@@ -183,17 +179,19 @@ export default function SermonPlayerPage() {
       {/* Player card — raised while its playlist popover has focus, so the
           cards below (own stacking contexts via backdrop-blur) can't cover it */}
       <div className="card relative focus-within:z-20 p-4 sm:p-8 space-y-6">
-        {/* Artwork */}
-        <div className="w-24 h-24 rounded-2xl bg-spirit-700 border border-spirit-600 flex items-center justify-center mx-auto overflow-hidden">
-          {sermon.thumbnail
-            ? <img src={sermon.thumbnail} alt="" className="w-full h-full object-cover" />
-            : <AudioWaveform className="w-12 h-12 text-accent-400" />
-          }
-        </div>
+        {/* Artwork — large, like Now Playing in Apple Music */}
+        <CoverArt
+          src={sermon.thumbnail}
+          seed={sermon.series?.title || sermon.title}
+          rounded="rounded-2xl"
+          className={`w-56 sm:w-72 mx-auto shadow-[0_30px_70px_-25px_rgba(0,0,0,.7)] transition-transform duration-500 ${
+            isThisSermon && !playing ? 'scale-[0.94]' : 'scale-100'
+          }`}
+        />
 
         {/* Info */}
         <div className="text-center">
-          <h2 className="font-display text-2xl text-spirit-100">{sermon.title}</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-spirit-100">{sermon.title}</h2>
           <p className="text-spirit-400 text-sm mt-1">{sermon.speaker}</p>
           <p className="text-spirit-500 text-xs mt-0.5">
             {sermon.series?.title}

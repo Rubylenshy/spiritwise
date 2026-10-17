@@ -7,8 +7,13 @@ import {
   useCreatePlaylist, useDeletePlaylist, useFavorites, useMovePlaylistItem, usePlaylist,
   usePlaylistItems, usePlaylists, useRemoveFromPlaylist, useRenamePlaylist, useSpeakers,
 } from '../hooks/useSermons'
+import { usePlayback } from '../hooks/usePlayback'
+import { useViewMode } from '../hooks/useViewMode'
 import { PageLoader, ErrorState, EmptyState } from '../components/ui'
-import { LoadMore, SermonRow } from '../components/SermonRow'
+import { LoadMore, SermonRow, SermonTile } from '../components/SermonRow'
+import CoverArt from '../components/CoverArt'
+import { CollectionHeader, ListHeader, MediaGrid, MediaTile, TrackList } from '../components/MediaGrid'
+import { formatDuration } from '../lib/format'
 
 const TABS = [
   { id: 'favorites', label: 'Favorites', Icon: Heart },
@@ -21,8 +26,11 @@ const smallIconButton =
 
 // ─── Favorites ────────────────────────────────────────────────────────────────
 
+const sermonCount = (n) => `${n} sermon${n !== 1 ? 's' : ''}`
+
 function FavoritesTab() {
   const favorites = useFavorites()
+  const [view, setView] = useViewMode('favorites')
 
   if (favorites.isLoading) return <PageLoader />
   if (favorites.error) return <ErrorState message="Could not load your favorites." onRetry={favorites.refetch} />
@@ -31,9 +39,17 @@ function FavoritesTab() {
   }
 
   return (
-    <div className="space-y-2">
-      <p className="label">{favorites.count} favorite{favorites.count !== 1 ? 's' : ''}</p>
-      {favorites.items.map((sermon) => <SermonRow key={sermon.id} sermon={sermon} />)}
+    <div className="space-y-4">
+      <ListHeader label={`${favorites.count} favorite${favorites.count !== 1 ? 's' : ''}`} view={view} onView={setView} />
+      {view === 'grid' ? (
+        <MediaGrid>
+          {favorites.items.map((sermon) => <SermonTile key={sermon.id} sermon={sermon} />)}
+        </MediaGrid>
+      ) : (
+        <TrackList>
+          {favorites.items.map((sermon) => <SermonRow key={sermon.id} sermon={sermon} />)}
+        </TrackList>
+      )}
       <LoadMore query={favorites} />
     </div>
   )
@@ -49,24 +65,22 @@ function SpeakersTab() {
   if (!data?.length) return <EmptyState title="No speakers yet" />
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       <p className="label">{data.length} speaker{data.length !== 1 ? 's' : ''}</p>
-      {data.map((speaker) => (
-        <Link
-          key={speaker.name}
-          to={`/sermons?speaker=${encodeURIComponent(speaker.name)}`}
-          className="card-hover px-5 py-4 flex items-center gap-4 group"
-        >
-          <div className="w-10 h-10 rounded-full bg-spirit-700 border border-spirit-600 flex items-center justify-center shrink-0">
-            <Mic2 className="w-4 h-4 text-accent-400" />
-          </div>
-          <p className="flex-1 min-w-0 text-spirit-100 font-medium text-sm truncate">{speaker.name}</p>
-          <span className="text-spirit-500 text-xs font-mono shrink-0">
-            {speaker.sermon_count} sermon{speaker.sermon_count !== 1 ? 's' : ''}
-          </span>
-          <ChevronRight className="w-4 h-4 text-spirit-500 group-hover:text-spirit-100 transition-colors" />
-        </Link>
-      ))}
+      <TrackList>
+        {data.map((speaker) => (
+          <Link
+            key={speaker.name}
+            to={`/sermons?speaker=${encodeURIComponent(speaker.name)}`}
+            className="focus-ring rounded-lg px-2 py-2 flex items-center gap-4 hover:bg-spirit-100/5 transition-colors group"
+          >
+            <CoverArt seed={speaker.name} icon={Mic2} rounded="rounded-full" className="w-11 h-11" />
+            <p className="flex-1 min-w-0 text-spirit-100 font-medium text-sm truncate">{speaker.name}</p>
+            <span className="text-spirit-500 text-xs font-mono shrink-0">{sermonCount(speaker.sermon_count)}</span>
+            <ChevronRight className="w-4 h-4 text-spirit-500 group-hover:text-spirit-100 transition-colors" />
+          </Link>
+        ))}
+      </TrackList>
     </div>
   )
 }
@@ -87,7 +101,7 @@ function NewPlaylistForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
+    <form onSubmit={handleSubmit} className="flex gap-2 max-w-xl">
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
@@ -110,6 +124,7 @@ function NewPlaylistForm() {
 
 function PlaylistsTab() {
   const { data, isLoading, error, refetch } = usePlaylists()
+  const [view, setView] = useViewMode('playlists')
 
   return (
     <div className="space-y-4">
@@ -118,24 +133,37 @@ function PlaylistsTab() {
         : error ? <ErrorState message="Could not load your playlists." onRetry={refetch} />
         : !data?.length ? <EmptyState title="No playlists yet" subtitle="Create one above, or add a sermon to a new playlist from any list." />
         : (
-          <div className="space-y-2">
-            {data.map((playlist) => (
-              <Link
-                key={playlist.id}
-                to={`/library/playlists/${playlist.id}`}
-                className="card-hover px-5 py-4 flex items-center gap-4 group"
-              >
-                <div className="w-10 h-10 rounded-2xl bg-spirit-700 border border-spirit-600 flex items-center justify-center shrink-0">
-                  <ListMusic className="w-4 h-4 text-accent-400" />
-                </div>
-                <p className="flex-1 min-w-0 text-spirit-100 font-medium text-sm truncate">{playlist.name}</p>
-                <span className="text-spirit-500 text-xs font-mono shrink-0">
-                  {playlist.item_count} sermon{playlist.item_count !== 1 ? 's' : ''}
-                </span>
-                <ChevronRight className="w-4 h-4 text-spirit-500 group-hover:text-spirit-100 transition-colors" />
-              </Link>
-            ))}
-          </div>
+          <>
+            <ListHeader label={`${data.length} playlist${data.length !== 1 ? 's' : ''}`} view={view} onView={setView} />
+            {view === 'grid' ? (
+              <MediaGrid>
+                {data.map((playlist) => (
+                  <MediaTile
+                    key={playlist.id}
+                    to={`/library/playlists/${playlist.id}`}
+                    title={playlist.name}
+                    subtitle={sermonCount(playlist.item_count)}
+                    art={{ srcs: playlist.cover_thumbnails, icon: ListMusic }}
+                  />
+                ))}
+              </MediaGrid>
+            ) : (
+              <TrackList>
+                {data.map((playlist) => (
+                  <Link
+                    key={playlist.id}
+                    to={`/library/playlists/${playlist.id}`}
+                    className="focus-ring rounded-lg px-2 py-2 flex items-center gap-4 hover:bg-spirit-100/5 transition-colors group"
+                  >
+                    <CoverArt srcs={playlist.cover_thumbnails} seed={playlist.name} icon={ListMusic} rounded="rounded-md" className="w-11 h-11" />
+                    <p className="flex-1 min-w-0 text-spirit-100 font-medium text-sm truncate">{playlist.name}</p>
+                    <span className="text-spirit-500 text-xs font-mono shrink-0">{sermonCount(playlist.item_count)}</span>
+                    <ChevronRight className="w-4 h-4 text-spirit-500 group-hover:text-spirit-100 transition-colors" />
+                  </Link>
+                ))}
+              </TrackList>
+            )}
+          </>
         )}
     </div>
   )
@@ -148,7 +176,7 @@ export function LibraryPage() {
   const tab = TABS.some((t) => t.id === searchParams.get('tab')) ? searchParams.get('tab') : 'favorites'
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 animate-slide-up">
+    <div className="max-w-6xl mx-auto space-y-6 animate-slide-up">
       <div role="tablist" aria-label="Library sections" className="glass rounded-full p-1 flex gap-1 w-fit">
         {TABS.map(({ id, label, Icon }) => (
           <button
@@ -178,12 +206,13 @@ export function LibraryPage() {
 
 // ─── Playlist detail ──────────────────────────────────────────────────────────
 
-function PlaylistHeader({ playlist }) {
+function PlaylistHeader({ playlist, sermons, complete }) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(playlist.name)
   const rename = useRenamePlaylist()
   const remove = useDeletePlaylist()
   const navigate = useNavigate()
+  const { playAll } = usePlayback()
 
   const handleRename = (e) => {
     e.preventDefault()
@@ -198,33 +227,47 @@ function PlaylistHeader({ playlist }) {
     })
   }
 
+  // Total length only once every sermon is loaded — otherwise it'd undercount
+  const total = complete && sermons.length
+    ? formatDuration(sermons.reduce((sum, s) => sum + (s.duration_seconds || 0), 0))
+    : null
+
+  const title = editing ? (
+    <form onSubmit={handleRename} className="flex gap-2">
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        maxLength={100}
+        autoFocus
+        aria-label="Playlist name"
+        className="input-field"
+      />
+      <button type="submit" disabled={!name.trim() || rename.isPending} className="btn-primary shrink-0 disabled:opacity-40">
+        Save
+      </button>
+      <button
+        type="button"
+        onClick={() => { setEditing(false); setName(playlist.name) }}
+        aria-label="Cancel rename"
+        className="btn-ghost shrink-0 px-3"
+      >
+        <X className="w-4 h-4" />
+      </button>
+    </form>
+  ) : playlist.name
+
   return (
-    <div className="card p-6 space-y-3">
-      {editing ? (
-        <form onSubmit={handleRename} className="flex gap-2">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={100}
-            autoFocus
-            aria-label="Playlist name"
-            className="input-field"
-          />
-          <button type="submit" disabled={!name.trim() || rename.isPending} className="btn-primary shrink-0 disabled:opacity-40">
-            Save
-          </button>
-          <button
-            type="button"
-            onClick={() => { setEditing(false); setName(playlist.name) }}
-            aria-label="Cancel rename"
-            className="btn-ghost shrink-0 px-3"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </form>
-      ) : (
-        <div className="flex items-start gap-3">
-          <h2 className="font-display text-2xl text-spirit-100 flex-1 min-w-0 break-words">{playlist.name}</h2>
+    <CollectionHeader
+      // Four or more covers make an Apple Music-style 2x2 mosaic
+      art={{ srcs: sermons.map((s) => s.thumbnail), seed: playlist.name, icon: ListMusic }}
+      eyebrow="Playlist"
+      title={title}
+      meta={[sermonCount(playlist.item_count), total].filter(Boolean).join(' · ')}
+      canPlay={sermons.length > 0}
+      onPlay={() => playAll(sermons)}
+      onShuffle={() => playAll(sermons, { shuffle: true })}
+      actions={!editing && (
+        <>
           <button type="button" onClick={() => setEditing(true)} aria-label="Rename playlist" title="Rename" className={smallIconButton}>
             <Pencil className="w-4 h-4" />
           </button>
@@ -238,12 +281,9 @@ function PlaylistHeader({ playlist }) {
           >
             <Trash2 className="w-4 h-4" />
           </button>
-        </div>
+        </>
       )}
-      <p className="text-spirit-500 text-xs">
-        {playlist.item_count} sermon{playlist.item_count !== 1 ? 's' : ''}
-      </p>
-    </div>
+    />
   )
 }
 
@@ -254,6 +294,7 @@ export function PlaylistDetailPage() {
   const move = useMovePlaylistItem()
   const removeItem = useRemoveFromPlaylist()
   const busy = move.isPending || removeItem.isPending
+  const sermonsInOrder = items.items.map((item) => item.sermon)
 
   if (isLoading) return <PageLoader />
   if (error) {
@@ -263,7 +304,7 @@ export function PlaylistDetailPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 animate-slide-up">
+    <div className="max-w-6xl mx-auto space-y-8 animate-slide-up">
       <div className="flex items-center gap-2 text-xs text-spirit-500">
         <Link to="/library?tab=playlists" className="hover:text-spirit-300 transition-colors">Playlists</Link>
         <span>›</span>
@@ -271,7 +312,12 @@ export function PlaylistDetailPage() {
       </div>
 
       {/* key: reset the rename draft when the server name changes */}
-      <PlaylistHeader key={playlist.name} playlist={playlist} />
+      <PlaylistHeader
+        key={playlist.name}
+        playlist={playlist}
+        sermons={sermonsInOrder}
+        complete={!items.isLoading && !items.hasNextPage}
+      />
 
       {items.isLoading ? <PageLoader />
         : items.error ? <ErrorState message="Could not load this playlist's sermons." onRetry={items.refetch} />
@@ -279,7 +325,8 @@ export function PlaylistDetailPage() {
           <EmptyState title="This playlist is empty" subtitle="Use the playlist button on any sermon to add it here." />
         ) : (
           <div className="space-y-2">
-            {items.items.map((item, i) => {
+            <TrackList>
+              {items.items.map((item, i) => {
               const vars = { playlistId: playlist.id, sermonId: item.sermon.id }
               return (
                 <SermonRow
@@ -321,7 +368,8 @@ export function PlaylistDetailPage() {
                   }
                 />
               )
-            })}
+              })}
+            </TrackList>
             <LoadMore query={items} />
           </div>
         )}

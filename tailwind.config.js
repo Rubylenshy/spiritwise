@@ -42,6 +42,7 @@ export default {
         'slide-up': 'slideUp 0.4s ease forwards',
         'pulse-slow': 'pulse 3s ease-in-out infinite',
         'flame': 'flameWave 1.5s ease-in-out infinite',
+        'eq': 'eqBar 0.9s ease-in-out infinite',
       },
       keyframes: {
         fadeIn: {
@@ -51,6 +52,10 @@ export default {
         slideUp: {
           from: { opacity: '0', transform: 'translateY(16px)' },
           to: { opacity: '1', transform: 'translateY(0)' },
+        },
+        eqBar: {
+          '0%, 100%': { transform: 'scaleY(0.3)' },
+          '50%': { transform: 'scaleY(1)' },
         },
         flameWave: {
           '0%, 100%': { transform: 'scaleY(1) scaleX(1)' },
