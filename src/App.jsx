@@ -5,7 +5,9 @@ import { ThemeProvider } from './context/ThemeContext'
 
 import ProtectedRoute from './components/ProtectedRoute'
 import GuestRoute from './components/GuestRoute'
+import AdminRoute from './components/AdminRoute'
 import RootLayout from './components/layout/RootLayout'
+import { NotFoundPage, StatusLayout } from './pages/StatusPages'
 
 // Auth
 import LoginPage from './pages/auth/LoginPage'
@@ -74,7 +76,7 @@ export default function App() {
                 <Route path="series/:id" element={<SeriesDetailPage />} />
                 <Route path="leaderboard" element={<LeaderboardPage />} />
                 <Route path="profile" element={<UserProfilePage />} />
-                <Route path="dashboard" element={<AdminDashboardPage />} />
+                <Route path="dashboard" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
                 {/* The import page became the dashboard's Sermons tab */}
                 <Route path="import" element={<Navigate to="/dashboard" replace />} />
 
@@ -82,8 +84,10 @@ export default function App() {
                 <Route path="wordlookup" element={<WordLookUpPage />} />
               </Route>
 
-              {/* Catch-all: unauthenticated → landing, authenticated → dashboard */}
-              <Route path="*" element={<Navigate to="/" replace />} />
+              {/* Catch-all 404: inside the app chrome when signed in, standalone otherwise */}
+              <Route element={<StatusLayout />}>
+                <Route path="*" element={<NotFoundPage />} />
+              </Route>
             </Routes>
           </BrowserRouter>
         </AudioProvider>

@@ -2,7 +2,7 @@ import useAuthStore from '../../store/authStore'
 import { Spinner } from '../../components/ui'
 import AvatarEditor from '../../components/AvatarEditor'
 import { useBadges, useEngagementStats } from '../../hooks/useSermons'
-import BadgeShelf from './components/BadgeShelf'
+import BadgeShelf, { isNewBadge } from './components/BadgeShelf'
 import StreakFreezeCard from './components/StreakFreezeCard'
 import SettingsForm from './components/SettingsForm'
 
@@ -11,6 +11,7 @@ export default function UserProfilePage() {
 
   const { data: badges, isLoading: badgesLoading } = useBadges()
   const { data: stats } = useEngagementStats()
+  const recentBadges = (stats?.recent_badges ?? []).filter((b) => isNewBadge(b.earned_at))
 
   const displayName = user?.first_name
     ? `${user.first_name} ${user.last_name ?? ''}`.trim()
@@ -51,12 +52,12 @@ export default function UserProfilePage() {
         currentStreak={user?.current_streak ?? 0}
       />
 
-      {/* Recently earned badges — from stats */}
-      {stats?.recent_badges?.length > 0 && (
+      {/* Recently earned badges — from stats, only those earned in the last week */}
+      {recentBadges.length > 0 && (
         <div className="card p-5 border-l-2 border-l-accent-500 rounded-r-2xl rounded-l-none animate-slide-up">
           <p className="label mb-3">Recently earned</p>
           <div className="flex gap-3 flex-wrap">
-            {stats.recent_badges.map((b) => (
+            {recentBadges.map((b) => (
               <div key={b.name} className="flex items-center gap-2 bg-accent-500/10 border border-accent-500/20 rounded-xl px-3 py-2">
                 <span className="text-lg">{b.icon}</span>
                 <div>
@@ -73,7 +74,7 @@ export default function UserProfilePage() {
       {badgesLoading ? (
         <div className="card p-8 flex justify-center"><Spinner className="w-6 h-6" /></div>
       ) : (
-        <BadgeShelf badges={badges} recentBadges={stats?.recent_badges} />
+        <BadgeShelf badges={badges} />
       )}
 
       {/* Settings */}

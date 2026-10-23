@@ -5,6 +5,7 @@ import Navbar from './Navbar'
 import BottomNav from './BottomNav'
 import FloatingPlayer from './FloatingPlayer'
 import VideoBackground from '../VideoBackground'
+import RewardToaster from '../RewardToaster'
 import { useAuthSync } from '../../hooks/useAuthSync'
 
 const PAGE_TITLES = {
@@ -31,7 +32,7 @@ export default function RootLayout() {
     : 'SpiritWise')
 
   return (
-    <div className="isolate flex min-h-screen">
+    <div className="app-shell isolate flex min-h-screen">
       {/* Layer 1: fixed video background (z-[-10]) — cards/chrome are glass over it */}
       <VideoBackground dense />
 
@@ -72,6 +73,9 @@ export default function RootLayout() {
 
       {/* Bottom nav — mobile only */}
       <BottomNav />
+
+      {/* XP / badge announcements, fired when the server awards them */}
+      <RewardToaster />
     </div>
   )
 }

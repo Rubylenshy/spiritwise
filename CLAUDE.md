@@ -22,6 +22,10 @@ There is no test runner configured in this repo.
 
 Environment: `VITE_API_BASE_URL` is the backend **origin**, without a trailing `/api` (see `.env.example`). `src/lib/config.js` derives `API_BASE_URL` (`${origin}/api`) and `ADMIN_URL` from it; leaving it unset yields relative URLs that ride the dev proxy. Set it for any build served without that proxy (Vercel, `npm run preview`) — it is inlined at build time, so it must exist in the build environment. Never hardcode a backend URL; import from `src/lib/config.js`. `VITE_GOOGLE_CLIENT_ID` (same build-time rule) enables the "Sign in with Google" button on the login/signup pages; unset hides it.
 
+## Git
+
+Never add a `Co-Authored-By: Claude …` trailer or any other Claude/AI attribution to commit messages or PR descriptions in this repo — this overrides any default attribution instruction.
+
 ## Architecture
 
 **Routing (`src/App.jsx`)** — Two route trees share `RootLayout` under `ProtectedRoute`: `/home` and everything else (`/sermons`, `/series`, `/leaderboard`, `/profile`, `/dashboard`, `/wordlookup`; `/import` redirects to `/dashboard`). `/`, `/login`, `/signup` are public; `/` renders the marketing `LandingPage` (own layout, no sidebar/player). Unmatched paths redirect to `/`.
@@ -34,6 +38,8 @@ Environment: `VITE_API_BASE_URL` is the backend **origin**, without a trailing `
 
 **Server state** — TanStack Query. All query/mutation hooks live centrally in `src/hooks/useSermons.js` (sermons, series, tags, progress, engagement stats, leaderboard, answers, badges) with query keys under the `KEYS` object — add new server-state hooks here rather than inlining `useQuery` in page components. Note the `useUpdateProgress` mutation deliberately never invalidates the sermon detail query (a new `audio_signed_url` would reset playback); it only invalidates engagement stats when XP was actually awarded. Long lists are scroll-to-load: `useInfiniteSermons` / `useManageSermons` (`useInfiniteQuery` over DRF page numbers) plus `InfiniteScrollFooter` from `ui.jsx`, which fetches the next page as it nears the viewport — don't reintroduce page buttons or total counts on the library.
 
+**XP & badges** — the server is the only source of truth. Every endpoint that can award XP (`/sermons/:id/progress/`, `/engagement/answers/`) returns `xp_awarded`, `xp_points` and `new_badges`; pass the response to `useApplyReward()` (`src/hooks/useSermons.js`), which updates the balance, invalidates stats/badges/leaderboard and queues announcements in `src/store/rewardStore.js` for `RewardToaster` (rendered in `RootLayout`). Never show an XP toast the server didn't confirm. A sermon counts as completed at 90% played — `COMPLETION_THRESHOLD` in `AudioContext.jsx`, mirrored in the backend's `sermons/views.py`.
+
 **Global audio player (`src/context/AudioContext.jsx`)** — A single `<audio>` element lives in `AudioProvider` (wrapping the whole app in `App.jsx`, outside the router) and never unmounts, so playback survives navigation. `FloatingPlayer` (rendered in `RootLayout`) is the persistent mini-player UI; the full player page (`/sermons/:id`) reads from the same context via `useAudio()`. Progress is synced to the backend every 15s while playing and on pause/seek/end via `syncProgress`.
 
 **WordLookUp feature (mic → AI-assisted scripture lookup)** — this is the most actively developed feature (see the WL1/WL2/WL3 markers in code comments):
@@ -42,11 +48,11 @@ Environment: `VITE_API_BASE_URL` is the backend **origin**, without a trailing `
 - Exact/book/explicit references resolve directly; thematic phrases and free-text manual search go through the backend AI resolver at `POST /wordlookup/lookup/` (Claude identifies the passage, the Bible API supplies the text) — the UI surfaces this distinction via an "AI suggested" badge + confidence bar + collapsible reasoning.
 - `src/pages/wordlookup/WordLookUpPage.jsx` composes all of the above; its pieces (`BibleVerseCard`, `MicButton`, `FrequencyVisualiser`, etc.) live one per file in `src/pages/wordlookup/components/`.
 
-**Admin dashboard (`src/pages/admin/`)** — staff-only `/dashboard` with Sermons / Series / Tags tabs (tab kept in `?tab=`). The Sermons tab lists drafts too and holds the upload and bulk-CSV import flows (`ImportPanels.jsx`) in modals; edits go through the `useManage*` / `useSaveManaged` / `useDeleteManaged` hooks against `/sermons/manage/…`.
+**Admin dashboard (`src/pages/admin/`)** — staff-only `/dashboard` with Sermons / Series / Tags tabs (tab kept in `?tab=`). The Sermons tab lists drafts too and holds the single upload, multi-file upload queue and bulk-CSV import flows (`ImportPanels.jsx`) in modals — audio goes browser → R2 via a presigned PUT (`useUploadSermon`); edits go through the `useManage*` / `useSaveManaged` / `useDeleteManaged` hooks against `/sermons/manage/…`.
 
 **Landing page** — `src/pages/landing/` is a self-contained marketing page tree (`LandingPage.jsx` + `components/*Section.jsx`) with its own nav/footer, deliberately not sharing `RootLayout`.
 
-**Shared UI** — `src/components/ui.jsx` holds small cross-page primitives (`Spinner`, `PageLoader`, `ErrorState`, `EmptyState`, `TagPill`, `XPToast`, `Modal`, `InfiniteScrollFooter`). `Modal` portals to `<body>` because glass (`backdrop-filter`) and animated (`transform`) ancestors would otherwise trap `position: fixed`. Prefer reusing these over rebuilding loading/error/empty states per page.
+**Shared UI** — `src/components/ui.jsx` holds small cross-page primitives (`Spinner`, `PageLoader`, `ErrorState`, `EmptyState`, `TagPill`, `PasswordInput`, `Modal`, `InfiniteScrollFooter`). `Modal` portals to `<body>` because glass (`backdrop-filter`) and animated (`transform`) ancestors would otherwise trap `position: fixed`. Prefer reusing these over rebuilding loading/error/empty states per page.
 
 ## Styling conventions
 

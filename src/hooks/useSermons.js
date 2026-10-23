@@ -1,5 +1,9 @@
+import { useCallback } from 'react'
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import axios from 'axios'
 import api from '../lib/axios'
+import useAuthStore from '../store/authStore'
+import useRewardStore from '../store/rewardStore'
 
 // ─── Query keys ──────────────────────────────────────────────────────────────
 export const KEYS = {
@@ -13,6 +17,7 @@ export const KEYS = {
   stats: () => ['engagement', 'stats'],
   leaderboard: (period) => ['leaderboard', period],
   answers: () => ['answers'],
+  badges: () => ['badges'],
 }
 
 // ─── Sermons ─────────────────────────────────────────────────────────────────
@@ -92,27 +97,26 @@ export function useTags() {
   })
 }
 
-// ─── Progress tracking ────────────────────────────────────────────────────────
+// ─── Rewards (XP + badges) ────────────────────────────────────────────────────
 
-export function useUpdateProgress() {
+/**
+ * Applies the reward fields that XP-awarding endpoints return
+ * (`xp_awarded`, `xp_points`, `new_badges`): updates the XP balance everywhere
+ * it's shown and announces what was earned. No-op when nothing was awarded.
+ */
+export function useApplyReward() {
   const queryClient = useQueryClient()
+  const announce = useRewardStore((s) => s.announce)
 
-  return useMutation({
-    mutationFn: async ({ sermonId, progressSeconds, completed }) => {
-      const { data } = await api.post(`/sermons/${sermonId}/progress/`, {
-        progress_seconds: progressSeconds,
-        completed,
-      })
-      return data
-    },
-    onSuccess: (data) => {
-      // NEVER invalidate sermon detail — new src resets the audio and stops playback
-      // Only refresh engagement stats when XP is actually awarded (sermon completed)
-      if (data.xp_awarded > 0) {
-        queryClient.invalidateQueries({ queryKey: KEYS.stats() })
-      }
-    },
-  })
+  return useCallback((data) => {
+    if (!data?.xp_awarded && !data?.new_badges?.length) return
+    const { user, setUser } = useAuthStore.getState()
+    if (user && data.xp_points != null) setUser({ ...user, xp_points: data.xp_points })
+    queryClient.invalidateQueries({ queryKey: KEYS.stats() })
+    queryClient.invalidateQueries({ queryKey: KEYS.badges() })
+    queryClient.invalidateQueries({ queryKey: ['leaderboard'] })
+    announce(data)
+  }, [queryClient, announce])
 }
 
 // ─── Engagement ───────────────────────────────────────────────────────────────
@@ -141,6 +145,7 @@ export function useLeaderboard(period = 'weekly') {
 
 export function useSubmitAnswer() {
   const queryClient = useQueryClient()
+  const applyReward = useApplyReward()
 
   return useMutation({
     mutationFn: async ({ questionId, sermonId, answerText }) => {
@@ -151,8 +156,8 @@ export function useSubmitAnswer() {
       })
       return data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: KEYS.stats() })
+    onSuccess: (data) => {
+      applyReward(data)
       queryClient.invalidateQueries({ queryKey: KEYS.answers() })
     },
   })
@@ -172,11 +177,7 @@ export function useBulkImportCsv() {
       })
       return data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sermons'] })
-      queryClient.invalidateQueries({ queryKey: KEYS.series() })
-      queryClient.invalidateQueries({ queryKey: KEYS.tags() })
-    },
+    onSuccess: () => invalidateLibrary(queryClient),
   })
 }
 
@@ -248,11 +249,41 @@ export function useDeleteManaged(kind) {
   })
 }
 
+// Uploads one audio file + metadata. The file goes straight from the browser
+// to R2 via a presigned PUT (the API server never streams the bytes), then
+// /imports/finalize/ reads its tags and creates the sermon. `fields` uses the
+// form field names (sermon_title, sermon_speaker, sermon_series, …); empty
+// values are dropped so the backend falls back to the file's own tags.
+// Pass the `r2Key` reported via `onStored` to retry only the finalize step.
+export function useUploadSermon() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ file, fields, r2Key, onProgress, onStored }) => {
+      let key = r2Key
+      if (!key) {
+        const { data: target } = await api.post('/imports/presign/', { filename: file.name })
+        // bare axios, not `api` — R2 must not receive our bearer token
+        await axios.put(target.upload_url, file, {
+          headers: { 'Content-Type': target.content_type },
+          onUploadProgress: e => onProgress?.(e.total ? Math.round((e.loaded / e.total) * 100) : 0),
+        })
+        key = target.key
+        onStored?.(key)
+      }
+      const payload = Object.fromEntries(Object.entries(fields).filter(([, v]) => v))
+      const { data } = await api.post('/imports/finalize/', { ...payload, r2_key: key })
+      return data
+    },
+    onSuccess: () => invalidateLibrary(queryClient),
+  })
+}
+
 // ─── Badges ───────────────────────────────────────────────────────────────────
 
 export function useBadges() {
   return useQuery({
-    queryKey: ['badges'],
+    queryKey: KEYS.badges(),
     queryFn: async () => {
       const { data } = await api.get('/auth/badges/')
       return data

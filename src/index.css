@@ -149,6 +149,17 @@
            transition-all duration-200 cursor-pointer;
   }
 
+  /* Inside the signed-in app (RootLayout) cards hold dense text, so they sit
+     on a near-opaque surface instead of see-through glass. spirit-800 is
+     white in light mode and #1e1e1e in dark. */
+  .app-shell .card {
+    @apply bg-spirit-800/90 backdrop-blur-xl;
+  }
+
+  .app-shell .card-hover:hover {
+    @apply bg-white dark:bg-spirit-700/90;
+  }
+
   .section-title {
     @apply font-display text-3xl text-spirit-100 leading-snug tracking-tighter;
   }

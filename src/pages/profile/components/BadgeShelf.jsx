@@ -1,6 +1,13 @@
 import { useState } from 'react'
 
-export default function BadgeShelf({ badges, recentBadges }) {
+// Badges earned within this window are highlighted as "new"
+const NEW_BADGE_DAYS = 7
+
+export function isNewBadge(earnedAt) {
+  return !!earnedAt && Date.now() - new Date(earnedAt).getTime() < NEW_BADGE_DAYS * 86_400_000
+}
+
+export default function BadgeShelf({ badges }) {
   const [showAll, setShowAll] = useState(false)
 
   const allBadges = badges ?? []
@@ -27,7 +34,7 @@ export default function BadgeShelf({ badges, recentBadges }) {
       </div>
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {displayed.map((ub) => {
-          const isNew = recentBadges?.some(r => r.name === ub.badge.name)
+          const isNew = isNewBadge(ub.earned_at)
           return (
             <div
               key={ub.id}

@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ExternalLink, FileSpreadsheet, Pencil, Search, Upload } from 'lucide-react'
+import { ExternalLink, FileSpreadsheet, Files, Pencil, Search, Upload } from 'lucide-react'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useManageList, useManageSermons, useManagedSermon, useSaveManaged } from '../../hooks/useSermons'
 import {
   EmptyState, ErrorState, InfiniteScrollFooter, Modal, PageLoader, Spinner, TagPill,
 } from '../../components/ui'
-import { BulkCsvImport, UploadPanel } from './ImportPanels'
+import { BatchUploadPanel, BulkCsvImport, UploadPanel } from './ImportPanels'
 import { FieldError, Segmented, apiErrors } from './shared'
 
 const STATUS_FILTERS = [
@@ -166,7 +166,7 @@ export default function SermonsTab() {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
   const [editing, setEditing] = useState(null)   // sermon id
-  const [importer, setImporter] = useState(null) // null | 'upload' | 'csv'
+  const [importer, setImporter] = useState(null) // null | 'upload' | 'batch' | 'csv'
   const debouncedQuery = useDebounce(query, 400)
 
   const { data, isLoading, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } =
@@ -194,6 +194,9 @@ export default function SermonsTab() {
         <div className="flex gap-2">
           <button type="button" onClick={() => setImporter('upload')} className="btn-primary flex-1 sm:flex-none">
             <Upload className="w-4 h-4" /> Upload
+          </button>
+          <button type="button" onClick={() => setImporter('batch')} className="btn-ghost flex-1 sm:flex-none">
+            <Files className="w-4 h-4" /> Upload many
           </button>
           <button type="button" onClick={() => setImporter('csv')} className="btn-ghost flex-1 sm:flex-none">
             <FileSpreadsheet className="w-4 h-4" /> Bulk CSV
@@ -244,6 +247,9 @@ export default function SermonsTab() {
 
       <Modal open={importer === 'upload'} onClose={() => setImporter(null)} title="Upload a sermon" className="max-w-2xl">
         <UploadPanel onEdit={editAfterUpload} />
+      </Modal>
+      <Modal open={importer === 'batch'} onClose={() => setImporter(null)} title="Upload many sermons" className="max-w-2xl">
+        <BatchUploadPanel />
       </Modal>
       <Modal open={importer === 'csv'} onClose={() => setImporter(null)} title="Bulk CSV import" className="max-w-2xl">
         <BulkCsvImport />

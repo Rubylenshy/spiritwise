@@ -1,26 +1,22 @@
 import { useState } from 'react'
 import { Check } from 'lucide-react'
 import { useSubmitAnswer } from '../../../hooks/useSermons'
-import { Spinner, XPToast } from '../../../components/ui'
+import { Spinner } from '../../../components/ui'
 
 export default function ReflectionQuestion({ question, sermonId, index }) {
   const [answer, setAnswer] = useState('')
   const [submitted, setSubmitted] = useState(false)
-  const [xpToast, setXpToast] = useState(false)
   const submitAnswer = useSubmitAnswer()
 
+  // XP / badge announcements come from the server response (useSubmitAnswer)
   const handleSubmit = async () => {
     if (!answer.trim()) return
-    const result = await submitAnswer.mutateAsync({
+    await submitAnswer.mutateAsync({
       questionId: question.id,
       sermonId,
       answerText: answer,
     })
     setSubmitted(true)
-    if (result.xp_awarded > 0) {
-      setXpToast(true)
-      setTimeout(() => setXpToast(false), 3000)
-    }
   }
 
   return (
@@ -53,7 +49,6 @@ export default function ReflectionQuestion({ question, sermonId, index }) {
           <p className="text-accent-500 text-xs mt-2 flex items-center gap-1"><Check className="w-4 h-4" /> Saved</p>
         </div>
       )}
-      <XPToast xp={10} show={xpToast} />
     </div>
   )
 }
