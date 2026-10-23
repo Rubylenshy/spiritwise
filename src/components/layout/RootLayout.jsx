@@ -13,7 +13,7 @@ const PAGE_TITLES = {
   '/series': 'Series',
   '/leaderboard': 'Leaderboard',
   '/profile': 'Your Profile',
-  '/import': 'Import Sermons',
+  '/dashboard': 'Admin Dashboard',
   '/wordlookup': 'WordLookUp',
 }
 
@@ -35,17 +35,18 @@ export default function RootLayout() {
       {/* Layer 1: fixed video background (z-[-10]) — cards/chrome are glass over it */}
       <VideoBackground dense />
 
-      {/* Mobile sidebar overlay */}
+      {/* Mobile sidebar overlay — the drawer and its backdrop sit above the
+          player bar (z-40) and bottom nav (z-20), below modals (z-50) */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-20 lg:hidden"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[45] lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <div className={`
-        fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-200
+        fixed inset-y-0 left-0 z-[46] w-64 transform transition-transform duration-200
         lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:z-auto
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>

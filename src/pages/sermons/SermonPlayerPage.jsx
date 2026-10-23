@@ -1,95 +1,17 @@
 import { useState, useEffect } from 'react'
-import { AudioWaveform, Check } from 'lucide-react'
+import { AudioWaveform } from 'lucide-react'
 import { useParams, Link } from 'react-router-dom'
-import { useSermon, useSubmitAnswer } from '../hooks/useSermons'
-import { useAudio } from '../context/AudioContext'
-import { PageLoader, ErrorState, Spinner, XPToast } from '../components/ui'
+import { useSermon } from '../../hooks/useSermons'
+import { useAudio } from '../../context/AudioContext'
+import { PageLoader, ErrorState, XPToast } from '../../components/ui'
+import ReflectionQuestion from './components/ReflectionQuestion'
+import NextSermonCard from './components/NextSermonCard'
 
 function formatTime(seconds) {
   if (!seconds || isNaN(seconds)) return '0:00'
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
   return `${m}:${s.toString().padStart(2, '0')}`
-}
-
-function ReflectionQuestion({ question, sermonId, index }) {
-  const [answer, setAnswer] = useState('')
-  const [submitted, setSubmitted] = useState(false)
-  const [xpToast, setXpToast] = useState(false)
-  const submitAnswer = useSubmitAnswer()
-
-  const handleSubmit = async () => {
-    if (!answer.trim()) return
-    const result = await submitAnswer.mutateAsync({
-      questionId: question.id,
-      sermonId,
-      answerText: answer,
-    })
-    setSubmitted(true)
-    if (result.xp_awarded > 0) {
-      setXpToast(true)
-      setTimeout(() => setXpToast(false), 3000)
-    }
-  }
-
-  return (
-    <div className="space-y-3">
-      <div className="flex gap-3">
-        <span className="font-display text-accent-500 text-lg leading-none shrink-0 mt-0.5">{index + 1}.</span>
-        <p className="text-spirit-300 text-sm leading-relaxed">{question.text}</p>
-      </div>
-      {!submitted ? (
-        <div className="ml-6 space-y-2">
-          <textarea
-            value={answer}
-            onChange={(e) => setAnswer(e.target.value)}
-            placeholder="Write your reflection…"
-            rows={3}
-            className="input-field resize-none text-sm"
-          />
-          <button
-            onClick={handleSubmit}
-            disabled={!answer.trim() || submitAnswer.isPending}
-            className="btn-primary text-sm flex items-center gap-2"
-          >
-            {submitAnswer.isPending ? <Spinner className="w-4 h-4" /> : null}
-            Submit +10 XP
-          </button>
-        </div>
-      ) : (
-        <div className="ml-6 bg-spirit-800/50 border border-spirit-700 rounded-xl px-4 py-3">
-          <p className="text-spirit-300 text-sm">{answer}</p>
-          <p className="text-accent-500 text-xs mt-2 flex items-center gap-1"><Check className="w-4 h-4" /> Saved</p>
-        </div>
-      )}
-      <XPToast xp={10} show={xpToast} />
-    </div>
-  )
-}
-
-function NextSermonCard({ nextSermon }) {
-  const { loadSermon } = useAudio()
-  const { data: next } = useSermon(nextSermon?.id)
-
-  if (!nextSermon) return null
-  return (
-    <div className="card p-5 flex items-center gap-4 animate-slide-up">
-      <div className="w-10 h-10 rounded-xl bg-spirit-700 border border-spirit-600 flex items-center justify-center shrink-0 overflow-hidden">
-        {nextSermon.thumbnail
-          ? <img src={nextSermon.thumbnail} alt="" className="w-full h-full object-cover" />
-          : <AudioWaveform className="w-5 h-5 text-accent-400" />
-        }
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="label mb-0.5">Up next in series</p>
-        <p className="text-spirit-100 font-medium text-sm truncate">{nextSermon.title}</p>
-        <p className="text-spirit-400 text-xs">{nextSermon.speaker} · {nextSermon.duration_display}</p>
-      </div>
-      <Link to={`/sermons/${nextSermon.id}`} className="btn-primary text-sm shrink-0">
-        Play →
-      </Link>
-    </div>
-  )
 }
 
 export default function SermonPlayerPage() {

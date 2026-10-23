@@ -1,5 +1,7 @@
 // Reusable components shared across pages
-import { Loader2, Sparkles } from 'lucide-react'
+import { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import { Loader2, Sparkles, X } from 'lucide-react'
 
 export function Spinner({ className = 'w-5 h-5' }) {
   return <Loader2 className={`animate-spin text-accent-500 ${className}`} />
@@ -33,6 +35,78 @@ export function EmptyState({ title = 'Nothing here yet', subtitle }) {
       <p className="font-display text-xl text-spirit-300">{title}</p>
       {subtitle && <p className="text-spirit-500 text-sm">{subtitle}</p>}
     </div>
+  )
+}
+
+/**
+ * Footer for a useInfiniteQuery list: fetches the next page as it scrolls
+ * into view (with a head start), and says so once everything has loaded.
+ */
+export function InfiniteScrollFooter({ hasNextPage, isFetchingNextPage, fetchNextPage, endLabel = "You've reached the end" }) {
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el || !hasNextPage || isFetchingNextPage) return
+    // Recreated after every page, so a sentinel still on screen keeps loading
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) fetchNextPage() },
+      { rootMargin: '400px 0px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
+
+  return (
+    <div ref={ref} className="flex justify-center py-4 min-h-[3rem]">
+      {isFetchingNextPage
+        ? <Spinner />
+        : !hasNextPage && endLabel && <p className="text-spirit-500 text-xs">{endLabel}</p>}
+    </div>
+  )
+}
+
+/**
+ * Centered dialog over a dimmed backdrop; Escape or a backdrop click closes it.
+ * Portaled to <body>: glass cards (backdrop-filter) and animated wrappers
+ * (transform) would otherwise become the containing block for `fixed`.
+ */
+export function Modal({ open, onClose, title, children, className = 'max-w-md' }) {
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
+  if (!open) return null
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onClick={(e) => e.stopPropagation()}
+        className={`w-full glass-chrome border border-black/10 dark:border-white/10 rounded-2xl p-5 sm:p-6 space-y-5 max-h-[90vh] overflow-y-auto animate-slide-up ${className}`}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <p className="font-display text-lg text-spirit-100 truncate">{title}</p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="focus-ring rounded-lg p-1 text-spirit-400 hover:text-spirit-100 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>,
+    document.body,
   )
 }
 

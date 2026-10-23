@@ -15,17 +15,18 @@ import SignUpPage from './pages/auth/SignUpPage'
 import LandingPage from './pages/landing/LandingPage'
 
 // Authenticated app pages
-import HomePage from './pages/HomePage'
-import SermonLibraryPage from './pages/SermonLibraryPage'
-import SermonPlayerPage from './pages/SermonPlayerPage'
-import { SeriesListPage, SeriesDetailPage } from './pages/SeriesPages'
-import LeaderboardPage from './pages/LeaderboardPage'
-import UserProfilePage from './pages/UserProfilePage'
-import CloudImportPage from './pages/CloudImportPage'
+import HomePage from './pages/home/HomePage'
+import SermonLibraryPage from './pages/sermons/SermonLibraryPage'
+import SermonPlayerPage from './pages/sermons/SermonPlayerPage'
+import SeriesListPage from './pages/series/SeriesListPage'
+import SeriesDetailPage from './pages/series/SeriesDetailPage'
+import LeaderboardPage from './pages/leaderboard/LeaderboardPage'
+import UserProfilePage from './pages/profile/UserProfilePage'
+import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 
 // LP4 — WordLookUp shell (mic + BibleVerseCard layout, non-functional)
 // Feature logic (useMicrophone, Bible API, AI resolver) added in WL1–WL4
-import WordLookUpPage from './pages/WordLookUpPage'
+import WordLookUpPage from './pages/wordlookup/WordLookUpPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -73,7 +74,9 @@ export default function App() {
                 <Route path="series/:id" element={<SeriesDetailPage />} />
                 <Route path="leaderboard" element={<LeaderboardPage />} />
                 <Route path="profile" element={<UserProfilePage />} />
-                <Route path="import" element={<CloudImportPage />} />
+                <Route path="dashboard" element={<AdminDashboardPage />} />
+                {/* The import page became the dashboard's Sermons tab */}
+                <Route path="import" element={<Navigate to="/dashboard" replace />} />
 
                 {/* LP4: WordLookUp shell — route + visual layout ready for WL1 */}
                 <Route path="wordlookup" element={<WordLookUpPage />} />

@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  AudioWaveform, ChevronRight, Home, Layers, Library, LogOut, ScanSearch, Trophy, Upload, X,
+  AudioWaveform, ChevronRight, Home, Layers, LayoutDashboard, Library, LogOut, ScanSearch, Trophy, X,
 } from 'lucide-react'
 import useAuthStore from '../../store/authStore'
 import UserAvatar from '../UserAvatar'
@@ -18,7 +18,7 @@ const TOOLS_NAV = [
   { label: 'WordLookUp', to: '/wordlookup', badge: 'beta', Icon: ScanSearch },
 ]
 
-const IMPORT_NAV = { label: 'Import', to: '/import', Icon: Upload }
+const ADMIN_NAV = { label: 'Dashboard', to: '/dashboard', Icon: LayoutDashboard }
 
 const itemClass = (isActive) =>
   `focus-ring flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
@@ -108,7 +108,7 @@ export default function Sidebar({ onClose }) {
         {isStaff && (
           <>
             <SectionLabel>Admin</SectionLabel>
-            <NavItem item={IMPORT_NAV} onClose={onClose} />
+            <NavItem item={ADMIN_NAV} onClose={onClose} />
           </>
         )}
       </nav>
