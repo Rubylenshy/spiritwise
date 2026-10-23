@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, AudioWaveform, Loader2 } from 'lucide-react'
 import VideoBackground from '../../components/VideoBackground'
 import ThemeToggle from '../../components/ThemeToggle'
+import GoogleSignInButton from '../../components/GoogleSignInButton'
 import { PasswordInput } from '../../components/ui'
 import api from '../../lib/axios'
 import { normalizeUsername } from '../../lib/validators'
@@ -172,6 +173,8 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+
+          <GoogleSignInButton redirectTo={from} />
 
           <p className="text-center text-sm text-spirit-400">
             Don&apos;t have an account?{' '}

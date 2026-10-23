@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AudioProvider } from './context/AudioContext'
 import { ThemeProvider } from './context/ThemeContext'
@@ -17,18 +17,19 @@ import SignUpPage from './pages/auth/SignUpPage'
 import LandingPage from './pages/landing/LandingPage'
 
 // Authenticated app pages
-import HomePage from './pages/HomePage'
-import SermonLibraryPage from './pages/SermonLibraryPage'
-import SermonPlayerPage from './pages/SermonPlayerPage'
-import { SeriesListPage, SeriesDetailPage } from './pages/SeriesPages'
-import { LibraryPage, PlaylistDetailPage } from './pages/LibraryPages'
-import LeaderboardPage from './pages/LeaderboardPage'
-import UserProfilePage from './pages/UserProfilePage'
-import CloudImportPage from './pages/CloudImportPage'
+import HomePage from './pages/home/HomePage'
+import SermonLibraryPage from './pages/sermons/SermonLibraryPage'
+import SermonPlayerPage from './pages/sermons/SermonPlayerPage'
+import SeriesListPage from './pages/series/SeriesListPage'
+import SeriesDetailPage from './pages/series/SeriesDetailPage'
+import { LibraryPage, PlaylistDetailPage } from './pages/library/LibraryPages'
+import LeaderboardPage from './pages/leaderboard/LeaderboardPage'
+import UserProfilePage from './pages/profile/UserProfilePage'
+import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 
 // LP4 — WordLookUp shell (mic + BibleVerseCard layout, non-functional)
 // Feature logic (useMicrophone, Bible API, AI resolver) added in WL1–WL4
-import WordLookUpPage from './pages/WordLookUpPage'
+import WordLookUpPage from './pages/wordlookup/WordLookUpPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -78,7 +79,9 @@ export default function App() {
                 <Route path="library/playlists/:id" element={<PlaylistDetailPage />} />
                 <Route path="leaderboard" element={<LeaderboardPage />} />
                 <Route path="profile" element={<UserProfilePage />} />
-                <Route path="import" element={<AdminRoute><CloudImportPage /></AdminRoute>} />
+                <Route path="dashboard" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
+                {/* The import page became the dashboard's Sermons tab */}
+                <Route path="import" element={<Navigate to="/dashboard" replace />} />
 
                 {/* LP4: WordLookUp shell — route + visual layout ready for WL1 */}
                 <Route path="wordlookup" element={<WordLookUpPage />} />

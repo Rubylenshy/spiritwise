@@ -6,14 +6,14 @@ import {
 import {
   useCreatePlaylist, useDeletePlaylist, useFavorites, useMovePlaylistItem, usePlaylist,
   usePlaylistItems, usePlaylists, useRemoveFromPlaylist, useRenamePlaylist, useSpeakers,
-} from '../hooks/useSermons'
-import { usePlayback } from '../hooks/usePlayback'
-import { useViewMode } from '../hooks/useViewMode'
-import { PageLoader, ErrorState, EmptyState } from '../components/ui'
-import { LoadMore, SermonRow, SermonTile } from '../components/SermonRow'
-import CoverArt from '../components/CoverArt'
-import { CollectionHeader, ListHeader, MediaGrid, MediaTile, TrackList } from '../components/MediaGrid'
-import { formatDuration } from '../lib/format'
+} from '../../hooks/useSermons'
+import { usePlayback } from '../../hooks/usePlayback'
+import { useViewMode } from '../../hooks/useViewMode'
+import { PageLoader, ErrorState, EmptyState } from '../../components/ui'
+import { LoadMore, SermonRow, SermonTile } from '../../components/SermonRow'
+import CoverArt from '../../components/CoverArt'
+import { CollectionHeader, ListHeader, MediaGrid, MediaTile, TrackList } from '../../components/MediaGrid'
+import { formatDuration, sermonCount } from '../../lib/format'
 
 const TABS = [
   { id: 'favorites', label: 'Favorites', Icon: Heart },
@@ -26,7 +26,6 @@ const smallIconButton =
 
 // ─── Favorites ────────────────────────────────────────────────────────────────
 
-const sermonCount = (n) => `${n} sermon${n !== 1 ? 's' : ''}`
 
 function FavoritesTab() {
   const favorites = useFavorites()

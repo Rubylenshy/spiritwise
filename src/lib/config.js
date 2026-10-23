@@ -18,3 +18,7 @@ export function mediaUrl(url) {
   if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(url)) return url
   return `${API_ORIGIN || 'http://localhost:8000'}${url.startsWith('/') ? '' : '/'}${url}`
 }
+
+// OAuth 2.0 Web client ID for "Sign in with Google" — the same one the backend
+// verifies against (GOOGLE_OAUTH_CLIENT_ID). Unset hides the Google button.
+export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''

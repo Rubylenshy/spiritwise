@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { AudioWaveform, Check, Loader2, Sparkles } from 'lucide-react'
 import VideoBackground from '../../components/VideoBackground'
 import ThemeToggle from '../../components/ThemeToggle'
+import GoogleSignInButton from '../../components/GoogleSignInButton'
 import { PasswordInput } from '../../components/ui'
 import api from '../../lib/axios'
 import { USERNAME_PATTERN, isValidEmail, normalizeEmail, normalizeUsername } from '../../lib/validators'
@@ -156,6 +157,8 @@ export default function SignUpPage() {
               </div>
 
               <button onClick={handleNext} className="btn-primary w-full">Continue</button>
+
+              <GoogleSignInButton text="signup_with" />
             </div>
           )}
 

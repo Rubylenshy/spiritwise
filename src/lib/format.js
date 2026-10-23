@@ -15,3 +15,6 @@ export function greetingFor(date = new Date()) {
   const hour = date.getHours()
   return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 }
+
+/** "1 sermon" / "12 sermons". */
+export const sermonCount = (n) => `${n} sermon${n !== 1 ? 's' : ''}`

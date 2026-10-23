@@ -1,87 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
-import { Check, SkipForward, Volume1, Volume2, VolumeX } from 'lucide-react'
+import { SkipForward, Volume1, Volume2, VolumeX } from 'lucide-react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { useSermon, useSubmitAnswer } from '../hooks/useSermons'
-import { useAudio } from '../context/AudioContext'
-import { PageLoader, ErrorState, Spinner } from '../components/ui'
-import SeekBar from '../components/SeekBar'
-import { AddToPlaylistButton, FavoriteButton } from '../components/SermonRow'
-import PlaybackRateButton from '../components/PlaybackRateButton'
-import QueuePanel from '../components/QueuePanel'
-import useQueueStore from '../store/queueStore'
-import CoverArt from '../components/CoverArt'
-import { formatDuration } from '../lib/format'
-
-function ReflectionQuestion({ question, sermonId, index }) {
-  // Already-answered questions show the saved answer — XP is paid only for a
-  // question's first answer, so offering "+10 XP" again would be a false promise
-  const [answer, setAnswer] = useState(question.my_answer ?? '')
-  const [submitted, setSubmitted] = useState(!!question.my_answer)
-  const submitAnswer = useSubmitAnswer()
-
-  // XP / badge announcements come from the server response (useSubmitAnswer)
-  const handleSubmit = async () => {
-    if (!answer.trim()) return
-    await submitAnswer.mutateAsync({
-      questionId: question.id,
-      sermonId,
-      answerText: answer,
-    })
-    setSubmitted(true)
-  }
-
-  return (
-    <div className="space-y-3">
-      <div className="flex gap-3">
-        <span className="font-display text-accent-500 text-lg leading-none shrink-0 mt-0.5">{index + 1}.</span>
-        <p className="text-spirit-300 text-sm leading-relaxed">{question.text}</p>
-      </div>
-      {!submitted ? (
-        <div className="ml-6 space-y-2">
-          <textarea
-            value={answer}
-            onChange={(e) => setAnswer(e.target.value)}
-            placeholder="Write your reflection…"
-            rows={3}
-            className="input-field resize-none text-sm"
-          />
-          <button
-            onClick={handleSubmit}
-            disabled={!answer.trim() || submitAnswer.isPending}
-            className="btn-primary text-sm flex items-center gap-2"
-          >
-            {submitAnswer.isPending ? <Spinner className="w-4 h-4" /> : null}
-            Submit +10 XP
-          </button>
-        </div>
-      ) : (
-        <div className="ml-6 bg-spirit-800/50 border border-spirit-700 rounded-xl px-4 py-3">
-          <p className="text-spirit-300 text-sm">{answer}</p>
-          <p className="text-accent-500 text-xs mt-2 flex items-center gap-1"><Check className="w-4 h-4" /> Saved</p>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// Renders from the `next_sermon` summary only — fetching its detail here would
-// count a play and mint a stream token before the user ever opens it.
-function NextSermonCard({ nextSermon }) {
-  if (!nextSermon) return null
-  return (
-    <div className="card p-5 flex items-center gap-4 animate-slide-up">
-      <CoverArt src={nextSermon.thumbnail} seed={nextSermon.title} rounded="rounded-md" className="w-12 h-12" />
-      <div className="flex-1 min-w-0">
-        <p className="label mb-0.5">Up next in series</p>
-        <p className="text-spirit-100 font-medium text-sm truncate">{nextSermon.title}</p>
-        <p className="text-spirit-400 text-xs">{nextSermon.speaker} · {formatDuration(nextSermon.duration_seconds)}</p>
-      </div>
-      <Link to={`/sermons/${nextSermon.id}`} className="btn-primary text-sm shrink-0">
-        Play →
-      </Link>
-    </div>
-  )
-}
+import { useSermon } from '../../hooks/useSermons'
+import { useAudio } from '../../context/AudioContext'
+import { PageLoader, ErrorState } from '../../components/ui'
+import SeekBar from '../../components/SeekBar'
+import { AddToPlaylistButton, FavoriteButton } from '../../components/SermonRow'
+import PlaybackRateButton from '../../components/PlaybackRateButton'
+import QueuePanel from '../../components/QueuePanel'
+import useQueueStore from '../../store/queueStore'
+import CoverArt from '../../components/CoverArt'
+import { formatDuration } from '../../lib/format'
+import ReflectionQuestion from './components/ReflectionQuestion'
+import NextSermonCard from './components/NextSermonCard'
 
 export default function SermonPlayerPage() {
   const { id } = useParams()

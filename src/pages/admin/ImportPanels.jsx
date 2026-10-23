@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { AlertCircle, CheckCircle2, RotateCcw, ShieldCheck, Sparkles, UploadCloud, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { ADMIN_URL } from '../lib/config'
-import { useSeries, useBulkImportCsv, useUploadSermon } from '../hooks/useSermons'
-import { Spinner } from '../components/ui'
-import { detectAudioMeta, parseFilename } from '../lib/audioMeta'
+import { ADMIN_URL } from '../../lib/config'
+import { useManageList, useBulkImportCsv, useUploadSermon } from '../../hooks/useSermons'
+import { Spinner } from '../../components/ui'
+import { detectAudioMeta, parseFilename } from '../../lib/audioMeta'
 
 const CSV_TEMPLATE = `id,slug,r2_key,title,speaker,series,tags,description,scripture_reference,sermon_date,audio_url,is_published
 ,,sermons/2026-01-12-walking-in-purpose.m4a,Walking in Purpose,Pastor James,Foundations,"Faith, Purpose",A message on discovering your calling.,John 3:16,2026-01-12,,false
@@ -22,7 +22,7 @@ function downloadCsvTemplate() {
   URL.revokeObjectURL(url)
 }
 
-function BulkCsvImport() {
+export function BulkCsvImport() {
   const fileRef = useRef(null)
   const [file, setFile] = useState(null)
   const [fileError, setFileError] = useState('')
@@ -195,7 +195,7 @@ const uploadErrorMessage = (err, fallback) =>
  * case-insensitively and creates the series only when nothing matches.
  */
 function SeriesField({ id, value, onChange, disabled, placeholder = 'None' }) {
-  const { data: seriesData } = useSeries({ all: true })
+  const { data: seriesData } = useManageList('series')
   const typed = value.trim().toLowerCase()
   const isNew = typed && !(seriesData ?? []).some(s => s.title.toLowerCase() === typed)
 
@@ -353,14 +353,14 @@ function UploadForm({ onSuccess }) {
       {/* Metadata */}
       <div className="space-y-1.5">
         <label className="label" htmlFor="sermon_title">Title <span className="text-flame-400">*</span></label>
-        <input id="sermon_title" name="sermon_title" type="text" value={form.sermon_title} onChange={handleChange} className="input-field" placeholder="Walking in Purpose" />
+        <input id="sermon_title" name="sermon_title" type="text" maxLength={300} value={form.sermon_title} onChange={handleChange} className="input-field" placeholder="Walking in Purpose" />
         {errors.sermon_title && <p className="text-flame-400 text-xs">{errors.sermon_title}</p>}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <label className="label" htmlFor="sermon_speaker">Speaker</label>
-          <input id="sermon_speaker" name="sermon_speaker" type="text" value={form.sermon_speaker} onChange={handleChange} className="input-field" placeholder="Pastor James" />
+          <input id="sermon_speaker" name="sermon_speaker" type="text" maxLength={255} value={form.sermon_speaker} onChange={handleChange} className="input-field" placeholder="Pastor James" />
         </div>
         <div className="space-y-1.5">
           <label className="label" htmlFor="sermon_date">Date</label>
@@ -463,7 +463,7 @@ function QueueRow({ row, locked, onChange, onRemove, onRetry }) {
           <p className="text-spirit-500 text-xs font-mono">{(row.file.size / 1024 / 1024).toFixed(1)} MB</p>
         </div>
         {row.status === 'done' && row.sermonId && (
-          <Link to={`/sermons/${row.sermonId}`} className="text-accent-400 hover:underline text-xs shrink-0">Preview →</Link>
+          <Link to={`/sermons/${row.sermonId}`} target="_blank" rel="noreferrer" className="text-accent-400 hover:underline text-xs shrink-0">Preview →</Link>
         )}
         {row.status === 'error' && !locked && (
           <button type="button" onClick={() => onRetry(row.id)} className="text-spirit-400 hover:text-spirit-200 shrink-0" title="Retry">
@@ -509,7 +509,8 @@ function QueueRow({ row, locked, onChange, onRemove, onRetry }) {
   )
 }
 
-function BatchUpload() {
+/** Multi-file upload queue: each file goes to R2 in turn, with shared series/tags. */
+export function BatchUploadPanel() {
   const upload = useUploadSermon()
   const fileRef = useRef(null)
 
@@ -607,6 +608,8 @@ function BatchUpload() {
 
   return (
     <div className="space-y-5">
+      <FormatGuide />
+
       <div
         onClick={() => !running && fileRef.current?.click()}
         onDragOver={e => { e.preventDefault(); if (!running) setDragging(true) }}
@@ -709,7 +712,7 @@ function BatchUpload() {
   )
 }
 
-function SuccessCard({ result, onUploadAnother }) {
+function SuccessCard({ result, onUploadAnother, onEdit }) {
   return (
     <div className="space-y-5 animate-slide-up">
       <div className="card p-6 border-l-2 border-l-accent-500 rounded-r-2xl rounded-l-none text-center space-y-3">
@@ -725,23 +728,19 @@ function SuccessCard({ result, onUploadAnother }) {
         <div className="space-y-2 text-sm text-spirit-300">
           <div className="flex items-start gap-2">
             <span className="text-accent-500 shrink-0 mt-0.5">1.</span>
-            <span>Open <a href={`${ADMIN_URL}/sermons/sermon/`} target="_blank" rel="noreferrer" className="text-accent-400 hover:underline">Django admin → Sermons</a> and find <span className="text-spirit-200">{result.sermon_title}</span></span>
+            <span>Check the speaker, series, tags and date, and publish it from the <span className="text-spirit-200">Sermons</span> tab</span>
           </div>
           <div className="flex items-start gap-2">
             <span className="text-accent-500 shrink-0 mt-0.5">2.</span>
-            <span>Add reflection questions, verify the speaker and series, set the sermon date</span>
-          </div>
-          <div className="flex items-start gap-2">
-            <span className="text-accent-500 shrink-0 mt-0.5">3.</span>
-            <span>Check <span className="font-mono text-spirit-300 text-xs">Is published</span> → Save — it will appear in the library immediately</span>
+            <span>Add reflection questions in <a href={`${ADMIN_URL}/sermons/sermon/${result.sermon_id}/change/`} target="_blank" rel="noreferrer" className="text-accent-400 hover:underline">Django admin</a></span>
           </div>
         </div>
       </div>
 
       <div className="flex gap-3">
-        <Link to={`/sermons/${result.sermon_id}`} className="btn-outline flex-1 text-center text-sm">
-          Preview sermon →
-        </Link>
+        <button onClick={onEdit} className="btn-outline flex-1 text-sm">
+          Edit details
+        </button>
         <button onClick={onUploadAnother} className="btn-ghost flex-1 text-sm">
           Upload another
         </button>
@@ -750,62 +749,32 @@ function SuccessCard({ result, onUploadAnother }) {
   )
 }
 
-export default function CloudImportPage() {
+/** Single-file upload: R2 notice, format guide, then the form or its result. */
+export function UploadPanel({ onEdit }) {
   const [result, setResult] = useState(null)
-  const [mode, setMode] = useState('single') // 'single' | 'batch' | 'bulk'
-
-  const tabs = [
-    { id: 'single', label: 'Upload one' },
-    { id: 'batch', label: 'Upload many' },
-    { id: 'bulk', label: 'Bulk CSV' },
-  ]
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 animate-slide-up">
-      {/* Mode tabs */}
-      <div className="flex gap-2 p-1 bg-spirit-800 rounded-2xl">
-        {tabs.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setMode(t.id)}
-            className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${mode === t.id ? 'bg-spirit-700 text-accent-400' : 'text-spirit-400 hover:text-spirit-200'}`}
-          >
-            {t.label}
-          </button>
-        ))}
+    <div className="space-y-5">
+      <div className="flex items-start gap-3 bg-accent-500/[0.08] border border-accent-500/20 rounded-2xl px-5 py-4">
+        <ShieldCheck className="w-5 h-5 text-accent-400 shrink-0 mt-0.5" />
+        <div>
+          <p className="text-accent-400 font-medium text-sm">Admin only — uploads directly to Cloudflare R2</p>
+          <p className="text-spirit-400 text-xs mt-0.5 leading-relaxed">
+            Files are stored securely in R2 and streamed through Django&apos;s authenticated proxy. The raw URL is never exposed to users.
+          </p>
+        </div>
       </div>
 
-      {mode === 'batch' ? (
-        <>
-          <FormatGuide />
-          <BatchUpload />
-        </>
-      ) : mode === 'single' ? (
-        <>
-          {/* Admin notice */}
-          <div className="flex items-start gap-3 bg-accent-500/[0.08] border border-accent-500/20 rounded-2xl px-5 py-4">
-            <ShieldCheck className="w-5 h-5 text-accent-400 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-accent-400 font-medium text-sm">Admin only — uploads directly to Cloudflare R2</p>
-              <p className="text-spirit-400 text-xs mt-0.5 leading-relaxed">
-                Files are stored securely in R2 and streamed through Django&apos;s authenticated proxy. The raw URL is never exposed to users.
-              </p>
-            </div>
-          </div>
+      <FormatGuide />
 
-          <FormatGuide />
-
-          {result ? (
-            <SuccessCard result={result} onUploadAnother={() => setResult(null)} />
-          ) : (
-            <div className="card p-6">
-              <p className="label mb-5">Upload sermon audio</p>
-              <UploadForm onSuccess={setResult} />
-            </div>
-          )}
-        </>
+      {result ? (
+        <SuccessCard
+          result={result}
+          onUploadAnother={() => setResult(null)}
+          onEdit={() => onEdit(result.sermon_id)}
+        />
       ) : (
-        <BulkCsvImport />
+        <UploadForm onSuccess={setResult} />
       )}
     </div>
   )

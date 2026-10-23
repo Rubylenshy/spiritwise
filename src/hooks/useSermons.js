@@ -9,6 +9,7 @@ import useRewardStore from '../store/rewardStore'
 export const KEYS = {
   sermons: (params) => ['sermons', params],
   sermonsInfinite: (params) => ['sermons', 'infinite', params],
+  manage: (kind, params) => ['manage', kind, params],
   sermon: (id) => ['sermon', id],
   series: () => ['series'],
   seriesList: (all) => ['series', 'list', { all }],
@@ -60,6 +61,23 @@ export function useSermons(params = {}) {
   })
 }
 
+// DRF page-number pagination as an infinite list: page N+1 while `next` is set
+const nextPage = (lastPage, allPages) => (lastPage.next ? allPages.length + 1 : undefined)
+
+/** Sermons page by page for scroll-to-load lists; flatten with `data.pages`. */
+export function useInfiniteSermons(params = {}) {
+  return useInfiniteQuery({
+    queryKey: KEYS.sermonsInfinite(params),
+    queryFn: async ({ pageParam }) => {
+      const { data } = await api.get('/sermons/', { params: { ...params, page: pageParam } })
+      return data
+    },
+    initialPageParam: 1,
+    getNextPageParam: nextPage,
+    staleTime: 1000 * 60 * 5,
+  })
+}
+
 export function sermonQuery(id) {
   return {
     queryKey: KEYS.sermon(id),
@@ -78,11 +96,6 @@ export function useSermon(id) {
     gcTime: 1000 * 60 * 5,
     refetchOnMount: true,
   })
-}
-
-// Sermons matching `params` (e.g. { series }), paged with "Load more".
-export function useSermonsInfinite(params = {}, options) {
-  return usePagedList(KEYS.sermonsInfinite(params), '/sermons/', params, options)
 }
 
 // Series with published sermons; `{ all: true }` includes empty ones (import page).
@@ -210,12 +223,75 @@ export function useBulkImportCsv() {
       })
       return data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sermons'] })
-      queryClient.invalidateQueries({ queryKey: KEYS.series() })
-      queryClient.invalidateQueries({ queryKey: KEYS.speakers() })
-      queryClient.invalidateQueries({ queryKey: KEYS.tags() })
+    onSuccess: () => invalidateLibrary(queryClient),
+  })
+}
+
+// ─── Admin dashboard (staff only — /sermons/manage/) ──────────────────────────
+
+/** Every sermon, drafts included, newest upload first. */
+export function useManageSermons(params = {}) {
+  return useInfiniteQuery({
+    queryKey: KEYS.manage('sermons', params),
+    queryFn: async ({ pageParam }) => {
+      const { data } = await api.get('/sermons/manage/sermons/', { params: { ...params, page: pageParam } })
+      return data
     },
+    initialPageParam: 1,
+    getNextPageParam: nextPage,
+  })
+}
+
+/** One sermon with every editable field, for the edit form. */
+export function useManagedSermon(id) {
+  return useQuery({
+    queryKey: KEYS.manage('sermon', id),
+    queryFn: async () => {
+      const { data } = await api.get(`/sermons/manage/sermons/${id}/`)
+      return data
+    },
+    enabled: !!id,
+  })
+}
+
+/** Every series or tag ('series' | 'tags'), each with its sermon_count. */
+export function useManageList(kind) {
+  return useQuery({
+    queryKey: KEYS.manage(kind),
+    queryFn: async () => {
+      const { data } = await api.get(`/sermons/manage/${kind}/`)
+      return data
+    },
+  })
+}
+
+// An edit can show up anywhere a sermon, series or tag is listed. Sermon
+// detail is left alone (it refetches on mount, and a refetch resets playback).
+function invalidateLibrary(queryClient) {
+  for (const queryKey of [['manage'], ['sermons'], KEYS.series(), KEYS.speakers(), KEYS.tags()]) {
+    queryClient.invalidateQueries({ queryKey })
+  }
+}
+
+/** Create (no id) or update ({ id, ...fields }) a sermon, series or tag. */
+export function useSaveManaged(kind) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...fields }) => {
+      const url = `/sermons/manage/${kind}/`
+      const { data } = id ? await api.patch(`${url}${id}/`, fields) : await api.post(url, fields)
+      return data
+    },
+    onSuccess: () => invalidateLibrary(queryClient),
+  })
+}
+
+/** Delete a series or tag by id (sermons are unpublished instead). */
+export function useDeleteManaged(kind) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id) => api.delete(`/sermons/manage/${kind}/${id}/`),
+    onSuccess: () => invalidateLibrary(queryClient),
   })
 }
 
@@ -246,12 +322,7 @@ export function useUploadSermon() {
       const { data } = await api.post('/imports/finalize/', { ...payload, r2_key: key })
       return data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sermons'] })
-      queryClient.invalidateQueries({ queryKey: KEYS.series() })
-      queryClient.invalidateQueries({ queryKey: KEYS.speakers() })
-      queryClient.invalidateQueries({ queryKey: KEYS.tags() })
-    },
+    onSuccess: () => invalidateLibrary(queryClient),
   })
 }
 

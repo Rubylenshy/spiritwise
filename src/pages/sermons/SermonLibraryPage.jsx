@@ -1,81 +1,34 @@
 import { useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { X } from 'lucide-react'
-import { useSermons, useTags } from '../hooks/useSermons'
-import { useDebounce } from '../hooks/useDebounce'
-import { PageLoader, ErrorState, EmptyState, TagPill } from '../components/ui'
-import { SermonRow, SermonTile } from '../components/SermonRow'
-import { ListHeader, MediaGrid, TrackList } from '../components/MediaGrid'
-import { useViewMode } from '../hooks/useViewMode'
+import { useTags } from '../../hooks/useSermons'
+import { useDebounce } from '../../hooks/useDebounce'
+import { TagPill } from '../../components/ui'
+import InfiniteSermonList from '../../components/InfiniteSermonList'
 
-function Pagination({ count, pageSize, currentPage, onPage }) {
-  const totalPages = Math.ceil(count / pageSize)
-  if (totalPages <= 1) return null
-
-  return (
-    <div className="flex items-center justify-center gap-2 pt-2">
-      <button
-        onClick={() => onPage(currentPage - 1)}
-        disabled={currentPage === 1}
-        className="btn-ghost text-sm px-3 py-2 disabled:opacity-30"
-      >
-        ← Prev
-      </button>
-      <span className="text-spirit-400 text-sm px-2">
-        Page {currentPage} of {totalPages}
-      </span>
-      <button
-        onClick={() => onPage(currentPage + 1)}
-        disabled={currentPage === totalPages}
-        className="btn-ghost text-sm px-3 py-2 disabled:opacity-30"
-      >
-        Next →
-      </button>
-    </div>
-  )
-}
+// Divides evenly into the 2 / 3 / 4 / 6-column grid
+const PAGE_SIZE = 24
 
 export default function SermonLibraryPage() {
   const [query, setQuery] = useState('')
   const [activeTag, setActiveTag] = useState(null)
-  const [page, setPage] = useState(1)
   // ?speaker= comes from the Library's Speakers tab
   const [searchParams, setSearchParams] = useSearchParams()
   const speaker = searchParams.get('speaker') || null
 
-  // Divides evenly into the 2 / 3 / 4 / 6-column grid
-  const PAGE_SIZE = 24
-  const [view, setView] = useViewMode('sermons')
   const debouncedQuery = useDebounce(query, 400)
 
   const { data: tagsData } = useTags()
 
-  const { data, isLoading, error, refetch } = useSermons({
-    q: debouncedQuery || undefined,
-    tag: activeTag || undefined,
-    speaker: speaker || undefined,
-    page,
-    page_size: PAGE_SIZE,
-  })
-
   const handleSearch = useCallback((e) => {
     setQuery(e.target.value)
-    setPage(1)
   }, [])
 
   const handleTag = useCallback((slug) => {
     setActiveTag((prev) => prev === slug ? null : slug)
-    setPage(1)
   }, [])
 
-  const clearSpeaker = () => {
-    setSearchParams({})
-    setPage(1)
-  }
-
   const tags = tagsData ?? []
-  const sermons = data?.results ?? []
-  const count = data?.count ?? 0
 
   return (
     <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6 animate-slide-up">
@@ -124,7 +77,7 @@ export default function SermonLibraryPage() {
             Speaker: <span className="font-medium">{speaker}</span>
             <button
               type="button"
-              onClick={clearSpeaker}
+              onClick={() => setSearchParams({})}
               aria-label="Clear speaker filter"
               className="focus-ring rounded-full p-1 text-spirit-500 hover:text-spirit-100 transition-colors"
             >
@@ -134,37 +87,15 @@ export default function SermonLibraryPage() {
         </div>
       )}
 
-      {/* Count */}
-      {!isLoading && (
-        <ListHeader label={`${count} sermon${count !== 1 ? 's' : ''}`} view={view} onView={setView} />
-      )}
-
-      {/* List */}
-      {isLoading ? (
-        <PageLoader />
-      ) : error ? (
-        <ErrorState message="Could not load sermons." onRetry={refetch} />
-      ) : sermons.length === 0 ? (
-        <EmptyState title="No sermons found" subtitle="Try a different search or tag filter." />
-      ) : (
-        <>
-          {view === 'grid' ? (
-            <MediaGrid>
-              {sermons.map((s) => <SermonTile key={s.id} sermon={s} />)}
-            </MediaGrid>
-          ) : (
-            <TrackList>
-              {sermons.map((s) => <SermonRow key={s.id} sermon={s} />)}
-            </TrackList>
-          )}
-          <Pagination
-            count={count}
-            pageSize={PAGE_SIZE}
-            currentPage={page}
-            onPage={setPage}
-          />
-        </>
-      )}
+      <InfiniteSermonList
+        params={{
+          q: debouncedQuery || undefined,
+          tag: activeTag || undefined,
+          speaker: speaker || undefined,
+          page_size: PAGE_SIZE,
+        }}
+        emptySubtitle="Try a different search or tag filter."
+      />
     </div>
   )
 }
