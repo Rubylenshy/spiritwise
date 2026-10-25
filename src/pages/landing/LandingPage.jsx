@@ -7,7 +7,6 @@ import FeaturesSection from './components/FeaturesSection'
 import WordLookUpSpotlight from './components/WordLookUpSpotlight'
 import AppMockupSection from './components/AppMockupSection'
 import LeadersSection from './components/LeadersSection'
-import PricingSection from './components/PricingSection'
 import GettingStartedSection from './components/GettingStartedSection'
 import LandingFooter from './components/LandingFooter'
 
@@ -34,8 +33,7 @@ export default function LandingPage() {
         <WordLookUpSpotlight />
         <AppMockupSection />
         <LeadersSection />
-        {/* Pricing after leaders so the value is clear before the ask */}
-        <PricingSection />
+        {/* <PricingSection /> */}
         <GettingStartedSection />
       </main>
 

@@ -13,7 +13,7 @@ import UserAvatar from '../../../components/UserAvatar'
 const NAV_LINKS = [
   { label: 'Features', href: '#features' },
   { label: 'Leaders', href: '#leaders' },
-  { label: 'Pricing', href: '#pricing' },
+//   { label: 'Pricing', href: '#pricing' },
 ]
 
 const navLinkClass =
