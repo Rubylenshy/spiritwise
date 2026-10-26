@@ -6,6 +6,7 @@ import BottomNav from './BottomNav'
 import FloatingPlayer from './FloatingPlayer'
 import VideoBackground from '../VideoBackground'
 import RewardToaster from '../RewardToaster'
+import UploadIndicator from '../UploadIndicator'
 import { useAuthSync } from '../../hooks/useAuthSync'
 import { usePlaylist, useSeriesDetail } from '../../hooks/useSermons'
 
@@ -86,6 +87,9 @@ export default function RootLayout() {
 
       {/* XP / badge announcements, fired when the server awards them */}
       <RewardToaster />
+
+      {/* Admin uploads in flight — survives closing the import modal */}
+      <UploadIndicator />
     </div>
   )
 }

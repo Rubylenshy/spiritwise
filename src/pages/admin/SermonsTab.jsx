@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ExternalLink, FileSpreadsheet, Files, Pencil, Search, Upload } from 'lucide-react'
 import { useDebounce } from '../../hooks/useDebounce'
+import useUploadStore from '../../store/uploadStore'
 import { useManageList, useManageSermons, useManagedSermon, useSaveManaged } from '../../hooks/useSermons'
 import {
   EmptyState, ErrorState, InfiniteScrollFooter, Modal, PageLoader, Spinner, TagPill,
@@ -166,7 +167,10 @@ export default function SermonsTab() {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
   const [editing, setEditing] = useState(null)   // sermon id
-  const [importer, setImporter] = useState(null) // null | 'upload' | 'batch' | 'csv'
+  // In the store so the app-wide upload indicator can reopen it
+  const importer = useUploadStore((s) => s.importer)
+  const openImporter = useUploadStore((s) => s.openImporter)
+  const closeImporter = useUploadStore((s) => s.closeImporter)
   const debouncedQuery = useDebounce(query, 400)
 
   const { data, isLoading, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } =
@@ -174,7 +178,7 @@ export default function SermonsTab() {
   const sermons = data?.pages.flatMap((p) => p.results) ?? []
 
   const editAfterUpload = (id) => {
-    setImporter(null)
+    closeImporter()
     setEditing(id)
   }
 
@@ -192,13 +196,13 @@ export default function SermonsTab() {
           />
         </div>
         <div className="flex gap-2">
-          <button type="button" onClick={() => setImporter('upload')} className="btn-primary flex-1 sm:flex-none">
+          <button type="button" onClick={() => openImporter('upload')} className="btn-primary flex-1 sm:flex-none">
             <Upload className="w-4 h-4" /> Upload
           </button>
-          <button type="button" onClick={() => setImporter('batch')} className="btn-ghost flex-1 sm:flex-none">
+          <button type="button" onClick={() => openImporter('batch')} className="btn-ghost flex-1 sm:flex-none">
             <Files className="w-4 h-4" /> Upload many
           </button>
-          <button type="button" onClick={() => setImporter('csv')} className="btn-ghost flex-1 sm:flex-none">
+          <button type="button" onClick={() => openImporter('csv')} className="btn-ghost flex-1 sm:flex-none">
             <FileSpreadsheet className="w-4 h-4" /> Bulk CSV
           </button>
         </div>
@@ -245,13 +249,13 @@ export default function SermonsTab() {
 
       <SermonEditModal sermonId={editing} onClose={() => setEditing(null)} />
 
-      <Modal open={importer === 'upload'} onClose={() => setImporter(null)} title="Upload a sermon" className="max-w-2xl">
+      <Modal open={importer === 'upload'} onClose={closeImporter} title="Upload a sermon" className="max-w-2xl">
         <UploadPanel onEdit={editAfterUpload} />
       </Modal>
-      <Modal open={importer === 'batch'} onClose={() => setImporter(null)} title="Upload many sermons" className="max-w-2xl">
+      <Modal open={importer === 'batch'} onClose={closeImporter} title="Upload many sermons" className="max-w-2xl">
         <BatchUploadPanel />
       </Modal>
-      <Modal open={importer === 'csv'} onClose={() => setImporter(null)} title="Bulk CSV import" className="max-w-2xl">
+      <Modal open={importer === 'csv'} onClose={closeImporter} title="Bulk CSV import" className="max-w-2xl">
         <BulkCsvImport />
       </Modal>
     </div>

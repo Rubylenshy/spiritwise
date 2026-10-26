@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { AlertCircle, CheckCircle2, RotateCcw, ShieldCheck, Sparkles, UploadCloud, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ADMIN_URL } from '../../lib/config'
 import { useManageList, useBulkImportCsv, useUploadSermon } from '../../hooks/useSermons'
 import { Spinner } from '../../components/ui'
-import { detectAudioMeta, parseFilename } from '../../lib/audioMeta'
+import { detectAudioMeta } from '../../lib/audioMeta'
+import useUploadStore, { ACCEPTED_FORMATS } from '../../store/uploadStore'
 
 const CSV_TEMPLATE = `id,slug,r2_key,title,speaker,series,tags,description,scripture_reference,sermon_date,audio_url,is_published
 ,,sermons/2026-01-12-walking-in-purpose.m4a,Walking in Purpose,Pastor James,Foundations,"Faith, Purpose",A message on discovering your calling.,John 3:16,2026-01-12,,false
@@ -131,8 +132,6 @@ export function BulkCsvImport() {
   )
 }
 
-const ACCEPTED_FORMATS = '.mp3,.m4a,.aac,.ogg,.opus,.wav,.flac'
-
 const FORMAT_GUIDE = [
   { ext: 'AAC (.m4a)', size: '~32 MB / 45 min', quality: 'Excellent', compat: 'All browsers', recommended: true },
   { ext: 'Opus (.opus)', size: '~21 MB / 45 min', quality: 'Excellent', compat: 'Chrome, Firefox', recommended: false },
@@ -184,11 +183,6 @@ function FormatGuide() {
   )
 }
 
-// No response at all means the request never completed (connection dropped,
-// or R2 refused the browser's PUT because the bucket CORS isn't set up).
-const uploadErrorMessage = (err, fallback) =>
-  err.response?.data?.detail ?? (err.response ? fallback : 'Network error — the upload did not complete.')
-
 /**
  * Series picker: type to filter existing series, or type a new name to create
  * it on upload. Sends a title (sermon_series_title) — the backend matches it
@@ -222,12 +216,16 @@ function SeriesField({ id, value, onChange, disabled, placeholder = 'None' }) {
   )
 }
 
-function UploadForm({ onSuccess }) {
+function UploadForm() {
   const upload = useUploadSermon()
+  const single = useUploadStore(s => s.single)
+  const startSingle = useUploadStore(s => s.startSingle)
   const fileRef = useRef(null)
 
-  const [file, setFile] = useState(null)
-  const [form, setForm] = useState({
+  // The upload itself lives in the store, so reopening the modal mid-upload
+  // (or after a failure) shows the same file and fields with live progress.
+  const [file, setFile] = useState(single?.file ?? null)
+  const [form, setForm] = useState(single?.fields ?? {
     sermon_title: '',
     sermon_speaker: '',
     sermon_series_title: '',
@@ -237,10 +235,9 @@ function UploadForm({ onSuccess }) {
     scripture_ref: '',
   })
   const [errors, setErrors] = useState({})
-  const [uploading, setUploading] = useState(false)
-  const [progress, setProgress] = useState(0)
-  const [uploadError, setUploadError] = useState('')
-  const [storedKey, setStoredKey] = useState(null) // set once the file is in R2, so a retry only re-runs finalize
+  const uploading = single?.status === 'uploading'
+  const progress = single?.progress ?? 0
+  const uploadError = single?.status === 'error' ? single.error : ''
 
   const handleChange = e => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
@@ -253,7 +250,6 @@ function UploadForm({ onSuccess }) {
     const f = e.target.files[0]
     if (!f) return
     setFile(f)
-    setStoredKey(null)
 
     // Tags are read in the browser — the file isn't sent anywhere until submit.
     setParsingMeta(true)
@@ -275,30 +271,11 @@ function UploadForm({ onSuccess }) {
     return errs
   }
 
-  const handleSubmit = async e => {
+  const handleSubmit = e => {
     e.preventDefault()
     const errs = validate()
     if (Object.keys(errs).length) { setErrors(errs); return }
-
-    setUploading(true)
-    setProgress(0)
-    setUploadError('')
-
-    try {
-      const data = await upload.mutateAsync({
-        file,
-        fields: form,
-        r2Key: storedKey,
-        onStored: setStoredKey,
-        onProgress: pct => setProgress(Math.round(pct * 0.9)), // 0-90% during upload
-      })
-      setProgress(100)
-      setTimeout(() => onSuccess(data), 400)
-    } catch (err) {
-      setUploadError(uploadErrorMessage(err, 'Upload failed. Please try again.'))
-      setUploading(false)
-      setProgress(0)
-    }
+    startSingle({ file, fields: form }, upload.mutateAsync)
   }
 
   const fileSizeMB = file ? (file.size / 1024 / 1024).toFixed(1) : null
@@ -307,7 +284,7 @@ function UploadForm({ onSuccess }) {
     <form onSubmit={handleSubmit} className="space-y-5">
       {/* File picker */}
       <div
-        onClick={() => fileRef.current?.click()}
+        onClick={() => !uploading && fileRef.current?.click()}
         className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
           file
             ? 'border-accent-500/50 bg-accent-500/5'
@@ -394,7 +371,7 @@ function UploadForm({ onSuccess }) {
       {uploading && (
         <div className="space-y-2">
           <div className="flex justify-between text-xs text-spirit-400">
-            <span>{progress < 90 ? 'Uploading to R2…' : progress < 100 ? 'Processing…' : 'Complete!'}</span>
+            <span>{progress < 90 ? 'Uploading to R2…' : 'Processing…'}</span>
             <span>{progress}%</span>
           </div>
           <div className="h-2 bg-spirit-700 rounded-full overflow-hidden">
@@ -412,6 +389,10 @@ function UploadForm({ onSuccess }) {
         </p>
       )}
 
+      {uploading && (
+        <p className="text-spirit-500 text-xs text-center">You can close this window — the upload carries on, with its progress at the bottom of the screen.</p>
+      )}
+
       <button
         type="submit"
         disabled={uploading}
@@ -421,28 +402,6 @@ function UploadForm({ onSuccess }) {
       </button>
     </form>
   )
-}
-
-const ACCEPTED_EXTENSIONS = ACCEPTED_FORMATS.split(',')
-
-let nextRowId = 1
-
-function makeRow(file) {
-  // Filename guess shows instantly; addFiles upgrades it once the tags are read.
-  const { title, speaker, date } = parseFilename(file.name)
-  return {
-    id: nextRowId++,
-    file,
-    title,
-    speaker,
-    date,
-    detecting: true,
-    status: 'pending', // 'pending' | 'uploading' | 'done' | 'error'
-    progress: 0,
-    error: '',
-    r2Key: null, // set once the audio is in R2, so a retry only re-runs finalize
-    sermonId: null,
-  }
 }
 
 function QueueRow({ row, locked, onChange, onRemove, onRetry }) {
@@ -514,93 +473,19 @@ export function BatchUploadPanel() {
   const upload = useUploadSermon()
   const fileRef = useRef(null)
 
-  const [rows, setRows] = useState([])
-  const [shared, setShared] = useState({ sermon_speaker: '', sermon_series_title: '', sermon_tags: '' })
-  const [running, setRunning] = useState(false)
   const [dragging, setDragging] = useState(false)
-  const [rejected, setRejected] = useState([])
 
-  // The upload loop reads rows through a ref so edits made before "Upload all"
-  // and status changes from earlier iterations are both visible to it.
-  const rowsRef = useRef(rows)
-  rowsRef.current = rows
-  const stopRef = useRef(false)
-
-  // Uploads stream from this tab — warn before the admin closes it mid-queue.
-  useEffect(() => {
-    if (!running) return
-    const warn = e => { e.preventDefault(); e.returnValue = '' }
-    window.addEventListener('beforeunload', warn)
-    return () => window.removeEventListener('beforeunload', warn)
-  }, [running])
-
-  const updateRow = (id, patch) => setRows(prev => prev.map(r => (r.id === id ? { ...r, ...patch } : r)))
-
-  const addFiles = fileList => {
-    const files = Array.from(fileList)
-    const ok = files.filter(f => ACCEPTED_EXTENSIONS.includes(f.name.slice(f.name.lastIndexOf('.')).toLowerCase()))
-    setRejected(files.filter(f => !ok.includes(f)).map(f => f.name))
-
-    const seen = new Set(rowsRef.current.map(r => `${r.file.name}:${r.file.size}`))
-    const added = ok.filter(f => !seen.has(`${f.name}:${f.size}`)).map(makeRow)
-    setRows(prev => [...prev, ...added])
-
-    // Fill in tag-detected values, but never overwrite a field the admin already edited.
-    added.forEach(async initial => {
-      const meta = await detectAudioMeta(initial.file)
-      setRows(prev => prev.map(r => {
-        if (r.id !== initial.id) return r
-        const pick = field => (r[field] === initial[field] && meta[field]) || r[field]
-        return { ...r, title: pick('title'), speaker: pick('speaker'), date: pick('date'), detecting: false }
-      }))
-    })
-  }
+  // Queue state lives in the store so it survives closing this modal
+  const {
+    rows, shared, running, rejected,
+    addFiles, updateRow, removeRow, retryRow, clearFinished, setShared, runQueue, stop,
+  } = useUploadStore()
 
   const handleDrop = e => {
     e.preventDefault()
     setDragging(false)
     if (!running) addFiles(e.dataTransfer.files)
   }
-
-  const runQueue = async () => {
-    stopRef.current = false
-    setRunning(true)
-
-    const ids = rowsRef.current.filter(r => r.status === 'pending' || r.status === 'error').map(r => r.id)
-    for (const id of ids) {
-      if (stopRef.current) break
-      const row = rowsRef.current.find(r => r.id === id)
-      if (!row) continue
-      if (!row.title.trim()) { updateRow(id, { status: 'error', error: 'Title is required.' }); continue }
-
-      updateRow(id, { status: 'uploading', progress: row.r2Key ? 100 : 0, error: '' })
-      try {
-        const data = await upload.mutateAsync({
-          file: row.file,
-          r2Key: row.r2Key,
-          onStored: key => updateRow(id, { r2Key: key }),
-          fields: {
-            sermon_title: row.title.trim(),
-            sermon_speaker: row.speaker.trim() || shared.sermon_speaker.trim(),
-            sermon_date: row.date,
-            // Blank: the backend uses each file's album tag instead
-            sermon_series_title: shared.sermon_series_title.trim(),
-            sermon_tags: shared.sermon_tags,
-          },
-          onProgress: pct => updateRow(id, { progress: pct }),
-        })
-        updateRow(id, { status: 'done', progress: 100, sermonId: data.sermon_id })
-      } catch (err) {
-        updateRow(id, { status: 'error', error: uploadErrorMessage(err, 'Upload failed.') })
-      }
-    }
-
-    setRunning(false)
-  }
-
-  const retryRow = id => updateRow(id, { status: 'pending', error: '' })
-  const removeRow = id => setRows(prev => prev.filter(r => r.id !== id))
-  const clearFinished = () => setRows(prev => prev.filter(r => r.status !== 'done'))
 
   const counts = rows.reduce((acc, r) => ({ ...acc, [r.status]: (acc[r.status] ?? 0) + 1 }), {})
   const queued = (counts.pending ?? 0) + (counts.error ?? 0)
@@ -631,7 +516,7 @@ export function BatchUploadPanel() {
         />
         <UploadCloud className="w-10 h-10 text-spirit-500 mx-auto mb-2" />
         <p className="text-spirit-300 font-medium">Drop audio files here, or click to select</p>
-        <p className="text-spirit-500 text-xs mt-1">Files upload one after another — keep this tab open until the queue finishes</p>
+        <p className="text-spirit-500 text-xs mt-1">Files upload one after another — keep this tab open until the queue finishes (closing this window is fine)</p>
       </div>
       {rejected.length > 0 && (
         <p className="text-flame-400 text-xs -mt-3">Skipped unsupported files: {rejected.join(', ')}</p>
@@ -646,7 +531,7 @@ export function BatchUploadPanel() {
                 id="batch_series"
                 value={shared.sermon_series_title}
                 disabled={running}
-                onChange={value => setShared(prev => ({ ...prev, sermon_series_title: value }))}
+                onChange={value => setShared({ sermon_series_title: value })}
                 placeholder="Each file's album tag"
               />
               <div className="space-y-1.5">
@@ -656,7 +541,7 @@ export function BatchUploadPanel() {
                   type="text"
                   value={shared.sermon_tags}
                   disabled={running}
-                  onChange={e => setShared(prev => ({ ...prev, sermon_tags: e.target.value }))}
+                  onChange={e => setShared({ sermon_tags: e.target.value })}
                   className="input-field"
                   placeholder="Faith, Hope"
                 />
@@ -669,7 +554,7 @@ export function BatchUploadPanel() {
                 type="text"
                 value={shared.sermon_speaker}
                 disabled={running}
-                onChange={e => setShared(prev => ({ ...prev, sermon_speaker: e.target.value }))}
+                onChange={e => setShared({ sermon_speaker: e.target.value })}
                 className="input-field"
                 placeholder="Used when a file has no speaker set"
               />
@@ -698,11 +583,11 @@ export function BatchUploadPanel() {
           </div>
 
           {running ? (
-            <button type="button" onClick={() => { stopRef.current = true }} className="btn-ghost w-full text-sm">
+            <button type="button" onClick={stop} className="btn-ghost w-full text-sm">
               Stop after current file
             </button>
           ) : (
-            <button type="button" onClick={runQueue} disabled={!queued || detecting} className="btn-primary w-full">
+            <button type="button" onClick={() => runQueue(upload.mutateAsync)} disabled={!queued || detecting} className="btn-primary w-full">
               {detecting ? 'Reading audio tags…' : queued ? `Upload ${queued} file${queued === 1 ? '' : 's'}` : 'All files uploaded'}
             </button>
           )}
@@ -751,7 +636,9 @@ function SuccessCard({ result, onUploadAnother, onEdit }) {
 
 /** Single-file upload: R2 notice, format guide, then the form or its result. */
 export function UploadPanel({ onEdit }) {
-  const [result, setResult] = useState(null)
+  const single = useUploadStore(s => s.single)
+  const resetSingle = useUploadStore(s => s.resetSingle)
+  const result = single?.status === 'done' ? single.result : null
 
   return (
     <div className="space-y-5">
@@ -770,11 +657,11 @@ export function UploadPanel({ onEdit }) {
       {result ? (
         <SuccessCard
           result={result}
-          onUploadAnother={() => setResult(null)}
-          onEdit={() => onEdit(result.sermon_id)}
+          onUploadAnother={resetSingle}
+          onEdit={() => { resetSingle(); onEdit(result.sermon_id) }}
         />
       ) : (
-        <UploadForm onSuccess={setResult} />
+        <UploadForm />
       )}
     </div>
   )
